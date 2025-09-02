@@ -1,0 +1,15 @@
+**/src/*
+**/srcfiles/*
+**/distfiles/*
+**/stage/*
+**/*.log
+**/TGS*
+**/meta/pkginfo.*
+**/meta/depend.*
+**/meta/sums.*
+**/meta/files.*
+**/meta/prototype.*
+distfiles/*
+srcfiles/*
+distfiles
+srcfiles

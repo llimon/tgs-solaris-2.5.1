@@ -1,0 +1,26 @@
+CHANGELOG
+---------
+* Sun Aug 17 2025 Luis Limon <luis@appointmetly.com> - 1.8.32-2
+- added missing files to package
+- patch to building in Solaris 2.6
+
+* Sun Nov 06 2022 Tom G. Christensen <swpkg@jupiterrise.com> - 1.8.32-1
+- Update to 1.8.32
+
+* Sat Mar 28 2015 Tom G. Christensen <swpkg@jupiterrise.com> - 1.8.12-2
+- Fix build on Solaris/x86 with gcc < 4.9
+
+* Fri Mar 20 2015 Tom G. Christensen <swpkg@jupiterrise.com> - 1.8.12-1
+- Update to 1.8.12
+
+* Sun Mar 30 2014 Tom G. Christensen <swpkg@jupiterrise.com> - 1.8.10p2-1
+- Update to 1.8.10p2
+
+* Thu May 09 2013 Tom G. Christensen <swpkg@jupiterrise.com> - 1.8.6p5-3
+- Fix building with stack protection
+
+* Sun Apr 28 2013 Tom G. Christensen <swpkg@jupiterrise.com> - 1.8.6p5-2
+- Set proper configure flags and define CPPFLAGS & LDFLAGS
+
+* Fri Feb 08 2013 Tom G. Christensen <swpkg@jupiterrise.com> - 1.8.6p5-1
+- Initial package

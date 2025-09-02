@@ -1,0 +1,12 @@
+[libsnprintf]
+pkgname="${pkgprefix}lvprnf"
+name="$topdir - Implements portable snprintf and vsnprintf"
+pkgcat="libraries"
+pkgvendor="https://ftp.deu.edu.tr/pub/Solaris/sunfreeware/SOURCES/"
+pkgdesc="Implements portable snprintf and vsnprintf"
+pkgver="$pkgver"
+files(-,root,bin)
+default_docs
+$_libdir/*
+$_includedir/*
+$_sharedir/*
