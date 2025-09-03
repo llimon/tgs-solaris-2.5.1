@@ -7,16 +7,18 @@
 # Check the following 4 variables before running the script
 topdir=libiconv
 version=1.15
-pkgver=1
+pkgver=2
 source[0]=https://mirrors.kernel.org/gnu/$topdir/$topdir-$version.tar.gz
-# If there are no patches, simply comment this
-#patch[0]=
+patch[0]=libiconv-getprogname.patch
 
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
 export LDFLAGS="-L$prefix/lib -R$prefix/lib"
+export LIBS="-lgcc_s"
+# Should use bash for libtool
+export CONFIG_SHELL=/usr/tgcware/bin/bash
 configure_args+=(--enable-extra-encodings)
 gnu_link iconv
 
@@ -24,12 +26,14 @@ reg prep
 prep()
 {
     generic_prep
+    setdir source
+    ${__gsed} -i 's|^#! /bin/sh|#!/usr/tgcware/bin/bash|' configure
 }
 
 reg build
 build()
 {
-    generic_build
+    gl_cv_func_getprogname_is_buggy=yes generic_build
 }
 
 reg install
