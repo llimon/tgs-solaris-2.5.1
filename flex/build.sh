@@ -17,7 +17,7 @@ source[0]=https://github.com/westes/$topdir/releases/download/v${version}/$topdi
 
 # Global settings
 export CPPFLAGS="-I/$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
+export LDFLAGS="-L$prefix/lib -R$prefix/lib -lsnprintf -lgcc_s -lgen"
 
 reg prep
 prep()

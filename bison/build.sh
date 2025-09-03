@@ -10,14 +10,14 @@ version=3.3.2
 pkgver=1
 source[0]=https://mirrors.kernel.org/gnu/$topdir/$topdir-$version.tar.xz
 # If there are no patches, simply comment this
-#patch[0]=
+patch[0]=getprogname.patch
 
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
 export CPPFLAGS="-I/$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
+export LDFLAGS="-L$prefix/lib -R$prefix/lib -lsnprintf -lgcc_s"
 
 reg prep
 prep()

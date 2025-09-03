@@ -1,0 +1,63 @@
+diff -ruN a/lib/getprogname.c b/lib/getprogname.c
+--- a/lib/getprogname.c	2019-02-03 05:29:23.000000000 -0800
++++ b/lib/getprogname.c	2025-09-03 15:23:29.991132922 -0700
+@@ -241,7 +241,58 @@
+     }
+   return NULL;
+ # else
+-#  error "getprogname module not ported to this OS"
++
++#include <stdio.h>
++#include <string.h>
++#include <unistd.h>
++#include <fcntl.h>
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <sys/procfs.h>
++
++const char *getprogname(void) {
++    static const char *progname = NULL;
++    int fd;
++    pid_t pid;
++    // Buffer for the path, max PID is usually INT_MAX, which is 2147483647
++    // So 10 digits + 6 for "/proc/%d" + 1 for null terminator = 17.
++    // A safe size is 32.
++    char proc_path[64];
++    prpsinfo_t psinfo;
++
++    // Get the current process ID
++    pid = getpid();
++
++    // Construct the path to the process file in /proc.
++    // The path is /proc/pid on Solaris 2.5.1
++
++    // We are careful to ensure the buffer is large enough.
++    sprintf(proc_path, "/proc/%d", pid);
++
++    progname = "unknown";
++
++    // Open the process file for reading
++    fd = open(proc_path, O_RDONLY);
++    if (fd < 0) {
++        perror("open failed");
++        return progname;
++    }
++
++    // Issue the PIOCPSINFO ioctl to get the process information
++    if (ioctl(fd, PIOCPSINFO, &psinfo) < 0) {
++        perror("ioctl(PIOCPSINFO) failed");
++        close(fd);
++        return progname;
++    }
++
++    // Close the file descriptor
++    close(fd);
++    progname = strdup( psinfo.pr_fname);
++
++    return progname;
++}
++
++
+ # endif
+ }
+ 
