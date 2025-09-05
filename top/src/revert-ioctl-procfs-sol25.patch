@@ -1,0 +1,1511 @@
+diff -ruN a/configure b/configure
+--- a/configure	2008-05-06 20:41:39.000000000 -0700
++++ b/configure	2025-09-05 00:06:40.200457382 -0700
+@@ -6126,7 +6126,7 @@
+ 	irix6*)		MODULE=irixsgi;;
+ 	linux*)		MODULE=linux; USE_FPH=1; SET_MODE=755;;
+         netbsd*)	MODULE=netbsd; SET_MODE=755;;
+-	solaris2*)	MODULE=sunos5; USE_FPH=1; SET_MODE=755;;
++	solaris2*)	MODULE=sunos5; SET_MODE=755;;
+ 	sunos4*)	MODULE=sunos4;;
+ 	sysv4*)		MODULE=svr4;;
+ 	sysv5*)		MODULE=svr5;;
+diff -ruN a/machine/m_sunos5.c b/machine/m_sunos5.c
+--- a/machine/m_sunos5.c	2008-05-06 20:41:38.000000000 -0700
++++ b/machine/m_sunos5.c	2025-09-04 23:55:34.958130128 -0700
+@@ -23,49 +23,41 @@
+ #define _KMEMUSER
+ 
+ #include "os.h"
+-#include "utils.h"
+-#include "username.h"
+-#include "display.h"
+ 
+ #if (OSREV == 551)
+ #undef OSREV
+ #define OSREV 55
+ #endif
+ 
+-/*
+- * Starting with SunOS 5.6 the data in /proc changed along with the
+- * means by which it is accessed.  In this case we define USE_NEW_PROC.
+- * Note that with USE_NEW_PROC defined the structure named "prpsinfo"
+- * is redefined to be "psinfo".  This will be confusing as you read
+- * the code.
+- */
+-
+-#if OSREV >= 56
+-#define USE_NEW_PROC
++/* kernels 5.4 and above track pctcpu in the proc structure,
++   but the results are less than desirable, so we continue to
++   pretend that they don't and just calculate it on our own
++*/
++#if (OSREV >= 54)
++/* #define PROC_HAS_PCTCPU */
+ #endif
+ 
+-#if defined(USE_NEW_PROC)
++#define USE_NEW_PROC
++#if defined(USE_NEW_PROC) && OSREV >= 56
+ #define _STRUCTURED_PROC 1
+ #define prpsinfo psinfo
+ #include <sys/procfs.h>
+ #define pr_fill pr_nlwp
+-/* the "px" macros are used where the actual member could be in a substructure */
+-#define px_state pr_lwp.pr_state
+-#define px_nice pr_lwp.pr_nice
+-#define px_pri pr_lwp.pr_pri
+-#define px_onpro pr_lwp.pr_onpro
++/* These require an ANSI C compiler "Reisser cpp" doesn't like this */
++#define pr_state pr_lwp.pr_state
++#define pr_oldpri pr_lwp.pr_oldpri
++#define pr_nice pr_lwp.pr_nice
++#define pr_pri pr_lwp.pr_pri
++#define pr_onpro pr_lwp.pr_onpro
+ #define ZOMBIE(p)	((p)->pr_nlwp == 0)
+ #define SIZE_K(p)	(long)((p)->pr_size)
+ #define RSS_K(p)	(long)((p)->pr_rssize)
+ #else
+-#define px_state pr_state
+-#define px_oldpri pr_oldpri
+-#define px_nice pr_nice
+-#define px_pri pr_pri
+-#define px_onpro pr_filler[5]
++#undef USE_NEW_PROC
+ #define ZOMBIE(p)	((p)->pr_zomb)
+ #define SIZE_K(p)	(long)((p)->pr_bysize/1024)
+ #define RSS_K(p)	(long)((p)->pr_byrssize/1024)
++#define pr_onpro 	pr_filler[5]
+ #endif
+ 
+ #include "top.h"
+@@ -99,9 +91,7 @@
+ #include <sys/priocntl.h>
+ #include <sys/tspriocntl.h>
+ #include <sys/processor.h>
+-#include <sys/resource.h>
+ #include <sys/swap.h>
+-#include <sys/stat.h>
+ #include <vm/anon.h>
+ #include <math.h>
+ #include <utmpx.h>
+@@ -143,16 +133,19 @@
+ #define loaddouble(la) ((double)(la) / FSCALE)
+ #define dbl_align(x)	(((unsigned long)(x)+(sizeof(double)-1)) & \
+ 						~(sizeof(double)-1))
+-
+-/*
+- * SunOS 5.4 and above track pctcpu in the proc structure as pr_pctcpu.
+- * These values are weighted over one minute whereas top output prefers
+- * a near-instantaneous measure of cpu utilization.  So we choose to
+- * ignore pr_pctcpu: we calculate our own cpu percentage and store it in
+- * one of the spare slots in the prinfo structure.
+- */
+-
++#ifdef PROC_HAS_PCTCPU
++    /*
++     * snarfed from <sys/procfs.h>:
++     * The following percent numbers are 16-bit binary
++     * fractions [0 .. 1] with the binary point to the
++     * right of the high-order bit (one == 0x8000)
++     */
++#define percent_cpu(pp) (((double)pp->pr_pctcpu)/0x8000*100)
++#define weighted_cpu(pp) (*(double *)dbl_align(pp->pr_filler))
++#else
+ #define percent_cpu(pp) (*(double *)dbl_align(&pp->pr_filler[0]))
++#define weighted_cpu(pp) (*(double *)dbl_align(&pp->pr_filler[2]))
++#endif
+ 
+ /* definitions for indices in the nlist array */
+ #define X_V			 0
+@@ -196,39 +189,30 @@
+ static unsigned long freemem_offset;
+ static unsigned long maxmem_offset;
+ static unsigned long anoninfo_offset;
+-static int maxfiles = 256;
+-#define MAXFILES 2048
+-static int *display_fields;
+-static int show_threads = 0;
+-static int show_fullcmd;
++static void reallocproc(int n);
++static int maxprocs = 0;
+ 
+ /* get_process_info passes back a handle.  This is what it looks like: */
+ struct handle
+-{
++  {
+     struct prpsinfo **next_proc;/* points to next valid proc pointer */
+     int remaining;		/* number of pointers remaining */
+-};
++  };
+ 
+ /*
+- * Structure for keeping track processes between updates.
+- * We keep these things in a hash table, which is updated at every cycle.  
++ * Structure for keeping track of CPU times from last time around
++ * the program.  We keep these things in a hash table, which is
++ * recreated at every cycle.
+  */
+ struct oldproc
+ {
+-    pid_t pid;
+-    id_t lwpid;
++    pid_t oldpid;
+     double oldtime;
+     double oldpct;
+-    uid_t  owner_uid;
+-    int fd_psinfo;
+-    int fd_lpsinfo;
+     int seen;
+ };
+ 
+-#define TIMESPEC_TO_DOUBLE(ts) ((ts).tv_sec * 1.0e9 + (ts).tv_nsec)
+-
+ hash_table *prochash;
+-hash_table *threadhash;
+ 
+ /*
+  * Structure for tracking per-cpu information
+@@ -255,22 +239,32 @@
+  */
+ #define PRPSINFOSIZE dbl_align(sizeof(struct prpsinfo))
+ 
+-/* this defines one field (or column) in the process display */
++/*
++ *  These definitions control the format of the per-process area
++ */
++#if OSREV >= 58
++static char header[] =
++"   PID X        LWP PRI NICE  SIZE   RES STATE    TIME    CPU COMMAND";
++/* 0123456   -- field to fill in starts at header+6 */
++#define UNAME_START 7
+ 
+-struct proc_field {
+-    char *name;
+-    int width;
+-    int rjust;
+-    int min_screenwidth;
+-    int (*format)(char *, int, struct prpsinfo *);
+-};
++#define Proc_format \
++        "%6d %-8.8s %3d %3d %4d %5s %5s %-6s %6s %5s%% %s"
++#else
++static char header[] =
++"  PID X        LWP PRI NICE  SIZE   RES STATE    TIME    CPU COMMAND";
++/* 0123456   -- field to fill in starts at header+6 */
++#define UNAME_START 6
++
++#define Proc_format \
++        "%5d %-8.8s %3d %3d %4d %5s %5s %-6s %6s %5s%% %s"
++#endif
+ 
+-#define PROCSTATES 8
+ /* process state names for the "STATE" column of the display */
+ char *state_abbrev[] =
+ {"", "sleep", "run", "zombie", "stop", "start", "cpu", "swap"};
+ 
+-int process_states[PROCSTATES];
++int process_states[8];
+ char *procstatenames[] =
+ {
+   "", " sleeping, ", " running, ", " zombie, ", " stopped, ",
+@@ -310,31 +304,34 @@
+ 
+ /* these are names given to allowed sorting orders -- first is default */
+ char *ordernames[] = 
+-{"cpu", "size", "res", "time", "pid", NULL};
++{"cpu", "size", "res", "time", NULL};
+ 
+ /* forward definitions for comparison functions */
+ int compare_cpu();
+ int compare_size();
+ int compare_res();
+ int compare_time();
+-int compare_pid();
+ 
+ int (*proc_compares[])() = {
+     compare_cpu,
+     compare_size,
+     compare_res,
+     compare_time,
+-    compare_pid,
+     NULL };
+ 
+ kvm_t *kd;
+ static DIR *procdir;
++static int nproc;
+ 
+ /* "cpucount" is used to store the value for the kernel variable "ncpus".
+    But since <sys/cpuvar.h> actually defines a variable "ncpus" we need
+    to use a different name here.   --wnl */
+ static int cpucount;
+ 
++/* these are for keeping track of the proc array */
++static struct prpsinfo *pbase;
++static struct prpsinfo **pref;
++
+ /* pagetok function is really a pointer to an appropriate function */
+ static int pageshift;
+ static long (*p_pagetok) ();
+@@ -343,172 +340,9 @@
+ /* useful externals */
+ extern char *myname;
+ extern void perror ();
+-extern int getptable ();
++extern void getptable ();
+ extern void quit ();
+ 
+-/* process formatting functions and data */
+-
+-int
+-fmt_pid(char *buf, int sz, struct prpsinfo *pp)
+-
+-{
+-    return snprintf(buf, sz, "%6d", (int)pp->pr_pid);
+-}
+-
+-int
+-fmt_username(char *buf, int sz, struct prpsinfo *pp)
+-
+-{
+-    return snprintf(buf, sz, "%-8.8s", username(pp->pr_uid));
+-}
+-
+-int
+-fmt_uid(char *buf, int sz, struct prpsinfo *pp)
+-
+-{
+-    return snprintf(buf, sz, "%6d", (int)pp->pr_uid);
+-}
+-
+-int
+-fmt_nlwp(char *buf, int sz, struct prpsinfo *pp)
+-
+-{
+-    return snprintf(buf, sz, "%4d", pp->pr_fill < 999 ? pp->pr_fill: 999);
+-}
+-
+-int
+-fmt_pri(char *buf, int sz, struct prpsinfo *pp)
+-
+-{
+-    return snprintf(buf, sz, "%3d", pp->px_pri);
+-}
+-
+-int
+-fmt_nice(char *buf, int sz, struct prpsinfo *pp)
+-
+-{
+-    return snprintf(buf, sz, "%4d", pp->px_nice - NZERO);
+-}
+-
+-int
+-fmt_size(char *buf, int sz, struct prpsinfo *pp)
+-
+-{
+-    return snprintf(buf, sz, "%5s", format_k(SIZE_K(pp)));
+-}
+-
+-int
+-fmt_res(char *buf, int sz, struct prpsinfo *pp)
+-
+-{
+-    return snprintf(buf, sz, "%5s", format_k(RSS_K(pp)));
+-}
+-
+-int
+-fmt_state(char *buf, int sz, struct prpsinfo *pp)
+-
+-{
+-    if (pp->px_state == SONPROC && cpucount > 1)
+-    {
+-	/* large #s may overflow colums */
+-	if (pp->px_onpro < 100)
+-	{
+-	    return snprintf(buf, sz, "cpu/%-2d", pp->px_onpro);
+-	}
+-	return snprintf(buf, sz, "cpu/**");
+-    }
+-
+-    return snprintf(buf, sz, "%-6s", state_abbrev[(int)pp->px_state]);
+-}
+-
+-int
+-fmt_time(char *buf, int sz, struct prpsinfo *pp)
+-
+-{
+-    return snprintf(buf, sz, "%6s", format_time(pp->pr_time.tv_sec));
+-}
+-
+-int
+-fmt_cpu(char *buf, int sz, struct prpsinfo *pp)
+-
+-{
+-    return snprintf(buf, sz, "%5s%%",
+-		    format_percent(percent_cpu(pp) / cpucount));
+-}
+-
+-int
+-fmt_command(char *buf, int sz, struct prpsinfo *pp)
+-
+-{
+-    return snprintf(buf, sz, "%s",
+-		    printable(show_fullcmd ? pp->pr_psargs : pp->pr_fname));
+-}
+-
+-int
+-fmt_lwp(char *buf, int sz, struct prpsinfo *pp)
+-
+-{
+-    return snprintf(buf, sz, "%4d", ((int)pp->pr_lwp.pr_lwpid < 10000 ?
+-		(int)pp->pr_lwp.pr_lwpid : 9999));
+-}
+-
+-struct proc_field proc_field[] = {
+-    { "PID", 6, 1, 0, fmt_pid },
+-    { "USERNAME", 8, 0, 0, fmt_username },
+-#define FIELD_USERNAME 1
+-    { "UID", 6, 1, 0, fmt_uid },
+-#define FIELD_UID 2
+-    { "NLWP", 4, 1, 0, fmt_nlwp },
+-    { "PRI", 3, 1, 0, fmt_pri },
+-    { "NICE", 4, 1, 0, fmt_nice },
+-    { "SIZE", 5, 1, 0, fmt_size },
+-    { "RES", 5, 1, 0, fmt_res },
+-    { "STATE", 6, 0, 0, fmt_state },
+-    { "TIME", 6, 1, 0, fmt_time },
+-    { "CPU", 6, 1, 0, fmt_cpu },
+-    { "COMMAND", 7, 0, 0, fmt_command },
+-    { "LWP", 4, 1, 0, fmt_lwp },
+-};
+-#define MAX_FIELDS 13
+-
+-static int proc_display[MAX_FIELDS];
+-static int thr_display[MAX_FIELDS];
+-
+-int
+-field_index(char *col)
+-
+-{
+-    struct proc_field *fp;
+-    int i = 0;
+-
+-    fp = proc_field;
+-    while (fp->name != NULL)
+-    {
+-	if (strcmp(col, fp->name) == 0)
+-	{
+-	    return i;
+-	}
+-	fp++;
+-	i++;
+-    }
+-
+-    return -1;
+-}
+-
+-void
+-field_subst(int *fp, int old, int new)
+-
+-{
+-    while (*fp != -1)
+-    {
+-	if (*fp == old)
+-	{
+-	    *fp = new;
+-	}
+-	fp++;
+-    }
+-}
+-
+ /* p_pagetok points to one of the following, depending on which
+    direction data has to be shifted: */
+ 
+@@ -569,107 +403,6 @@
+ 
+ }
+ 
+-/* procs structure memory management */
+-
+-static struct prpsinfo **allprocs = NULL;
+-static struct prpsinfo **nextproc = NULL;
+-static int maxprocs = 0;
+-static int idxprocs = 0;
+-
+-/*
+- * void procs_prealloc(int cnt)
+- *
+- * Preallocate "cnt" procs structures.  If "cnt" is less than or equal
+- * to procs_max() then this function has no effect.
+- */
+-
+-void
+-procs_prealloc(int max)
+-
+-{
+-    int cnt;
+-    struct prpsinfo *new;
+-    struct prpsinfo **pp;
+-
+-    cnt = max - maxprocs;
+-    if (cnt > 0)
+-    {
+-	dprintf("procs_prealloc: need %d, deficit %d\n", max, cnt);
+-	allprocs = (struct prpsinfo **)
+-	    realloc((void *)allprocs, max * sizeof(struct prpsinfo *));
+-	pp = nextproc = allprocs + idxprocs;
+-	new = (struct prpsinfo *)malloc(cnt * PRPSINFOSIZE);
+-	dprintf("procs_prealloc: idxprocs %d, allprocs %08x, nextproc %08x, new %08x\n",
+-		idxprocs, allprocs, nextproc, new);
+-	while (--cnt >= 0)
+-	{
+-	    *pp++ = new;
+-	    new = (struct prpsinfo *) ((char *)new + PRPSINFOSIZE);
+-	}
+-	dprintf("procs_prealloc: done filling at %08x\n", new);
+-	maxprocs = max;
+-    }
+-}
+-
+-/*
+- * struct prpsinfo *procs_next()
+- *
+- * Return the next available procs structure, allocating a new one
+- * if needed.
+- */
+-
+-struct prpsinfo *
+-procs_next()
+-
+-{
+-    if (idxprocs >= maxprocs)
+-    {
+-	/* allocate some more */
+-	procs_prealloc(maxprocs + 128);
+-    }
+-    idxprocs++;
+-    return *nextproc++;
+-}
+-
+-struct prpsinfo *
+-procs_dup(struct prpsinfo *p)
+-
+-{
+-    struct prpsinfo *n;
+-
+-    n = procs_next();
+-    memcpy(n, p, PRPSINFOSIZE);
+-    return n;
+-}
+-
+-/*
+- * struct prpsinfo *procs_start()
+- *
+- * Return the first procs structure.
+- */
+-
+-struct prpsinfo *
+-procs_start()
+-
+-{
+-    idxprocs = 0;
+-    nextproc = allprocs;
+-    return procs_next();
+-}
+-
+-/*
+- * int procs_max()
+- *
+- * Return the maximum number of procs structures currently allocated.
+- */
+-
+-int
+-procs_max()
+-
+-{
+-    return maxprocs;
+-}
+-
+ /*
+  * check_nlist(nlst) - checks the nlist to see if any symbols were not
+  *		found.  For every symbol that was not found, a one-line
+@@ -702,7 +435,13 @@
+ char *
+ format_header (register char *uname_field)
+ {
+-  return ("");
++  register char *ptr;
++
++  ptr = header + UNAME_START;
++  while (*uname_field != '\0')
++    *ptr++ = *uname_field++;
++
++  return (header);
+ }
+ 
+ #ifdef USE_KSTAT
+@@ -1187,11 +926,8 @@
+ {
+     struct utmpx ut;
+     struct utmpx *up;
+-    struct rlimit rlim;
+     int i;
+     char *p;
+-    int *ip;
+-    int nproc;
+ #ifndef USE_KSTAT
+     int offset;
+ #endif
+@@ -1240,7 +976,6 @@
+     statics->order_names = ordernames;
+     statics->flags.fullcmds = 1;
+     statics->flags.warmup = 1;
+-    statics->flags.threads = 1;
+ 
+     /* get boot time */
+     ut.ut_type = BOOT_TIME;
+@@ -1304,9 +1039,8 @@
+     nproc = get_nproc();
+     dprintf("machine_init: nproc=%d\n", nproc);
+ 
+-    /* hash table for procs and threads sized based on current nproc*/
++    /* hash table for remembering procs sized based on current nproc*/
+     prochash = hash_create(nproc > 100 ? nproc * 2 + 1 : 521);
+-    threadhash = hash_create(nproc > 100 ? nproc * 4 + 1 : 2053);
+ 
+     /* calculate pageshift value */
+     i = sysconf(_SC_PAGESIZE);
+@@ -1337,47 +1071,6 @@
+ 	pageshift = -pageshift;
+     }
+ 
+-    /* we cache open files to improve performance, so we need to up
+-       the NOFILE limit */
+-    if (getrlimit(RLIMIT_NOFILE, &rlim) == 0)
+-    {
+-	/* set a new soft limit */
+-	maxfiles = (int)(rlim.rlim_max < MAXFILES ? rlim.rlim_max : MAXFILES);
+-	rlim.rlim_cur = (rlim_t)maxfiles;
+-	(void)setrlimit(RLIMIT_NOFILE, &rlim);
+-
+-	/* now leave some wiggle room above the maximum */
+-	maxfiles -= 20;
+-    }
+-
+-    /* set up the display indices */
+-    ip = proc_display;
+-    *ip++ = field_index("PID");
+-    *ip++ = field_index("USERNAME");
+-    *ip++ = field_index("NLWP");
+-    *ip++ = field_index("PRI");
+-    *ip++ = field_index("NICE");
+-    *ip++ = field_index("SIZE");
+-    *ip++ = field_index("RES");
+-    *ip++ = field_index("STATE");
+-    *ip++ = field_index("TIME");
+-    *ip++ = field_index("CPU");
+-    *ip++ = field_index("COMMAND");
+-    *ip = -1;
+-    ip = thr_display;
+-    *ip++ = field_index("PID");
+-    *ip++ = field_index("LWP");
+-    *ip++ = field_index("USERNAME");
+-    *ip++ = field_index("PRI");
+-    *ip++ = field_index("NICE");
+-    *ip++ = field_index("SIZE");
+-    *ip++ = field_index("RES");
+-    *ip++ = field_index("STATE");
+-    *ip++ = field_index("TIME");
+-    *ip++ = field_index("CPU");
+-    *ip++ = field_index("COMMAND");
+-    *ip = -1;
+-
+     if (!(procdir = opendir (PROCFS)))
+     {
+ 	(void) fprintf (stderr, "Unable to open %s\n", PROCFS);
+@@ -1487,6 +1180,7 @@
+ }
+ 
+ static struct handle handle;
++static int show_fullcmd;
+ 
+ caddr_t
+ get_process_info (
+@@ -1499,8 +1193,6 @@
+     register int active_procs;
+     register struct prpsinfo **prefp;
+     register struct prpsinfo *pp;
+-    int nproc;
+-    int state;
+ 
+     /* these are copied out of sel for speed */
+     int show_idle;
+@@ -1508,78 +1200,48 @@
+     int show_uid;
+     char *show_command;
+ 
+-    /* these persist across calls */
+-    static struct prpsinfo **pref = NULL;
+-    static int pref_size = 0;
+-
+-    /* set up flags which define what we are going to select */
+-    show_idle = sel->idle;
+-    show_system = sel->system;
+-    show_uid = sel->uid != -1;
+-    show_fullcmd = sel->fullcmd;
+-    show_command = sel->command;
+-    show_threads = sel->threads;
+-
+     /* allocate enough space for twice our current needs */
+     nproc = get_nproc();
+-    if (nproc > procs_max())
++    if (nproc > maxprocs)
+     {
+-	procs_prealloc(2 * nproc);
++	reallocproc(2 * nproc);
+     }
+ 
+     /* read all the proc structures */
+-    nproc = getptable();
+-
+-    /* allocate pref[] */
+-    if (pref_size < nproc)
+-    {
+-	if (pref != NULL)
+-	{
+-	    free(pref);
+-	}
+-	pref = (struct prpsinfo **)malloc(nproc * sizeof(struct prpsinfo *));
+-	dprintf("get_process_info: allocated %d prinfo pointers at %08x\n",
+-		nproc, pref);
+-	pref_size = nproc;
+-    }
++    getptable (pbase);
+ 
+     /* get a pointer to the states summary array */
+     si->procstates = process_states;
+ 
++    /* set up flags which define what we are going to select */
++    show_idle = sel->idle;
++    show_system = sel->system;
++    show_uid = sel->uid != -1;
++    show_fullcmd = sel->fullcmd;
++    show_command = sel->command;
++
+     /* count up process states and get pointers to interesting procs */
+     total_procs = 0;
+     active_procs = 0;
+     (void) memset (process_states, 0, sizeof (process_states));
+     prefp = pref;
+ 
+-    for (pp = procs_start(), i = 0; i < nproc;
+-	 i++, pp = procs_next())
++    for (pp = pbase, i = 0; i < nproc;
++	 i++, pp = (struct prpsinfo *) ((char *) pp + PRPSINFOSIZE))
+     {
+-	dprintf("looking at #%d: %d.%d\n", i,
+-		pp->pr_pid, pp->pr_lwp.pr_lwpid);
+ 	/*
+ 	 *  Place pointers to each valid proc structure in pref[].
+ 	 *  Process slots that are actually in use have a non-zero
+ 	 *  status field.  Processes with SSYS set are system
+ 	 *  processes---these get ignored unless show_sysprocs is set.
+ 	 */
+-	if (pp->px_state != 0 &&
++	if (pp->pr_state != 0 &&
+ 	    (show_system || ((pp->pr_flag & SSYS) == 0)))
+ 	{
+ 	    total_procs++;
+-	    state = (int)pp->px_state;
+-	    if (state > 0 && state < PROCSTATES)
+-	    {
+-		process_states[state]++;
+-	    }
+-	    else
+-	    {
+-		dprintf("process %d.%d: state out of bounds %d\n",
+-			pp->pr_pid, pp->pr_lwp.pr_lwpid, state);
+-	    }
+-
++	    process_states[(int)pp->pr_state]++;
+ 	    if ((!ZOMBIE(pp)) &&
+-		(show_idle || percent_cpu (pp) || (pp->px_state == SRUN) || (pp->px_state == SONPROC)) &&
++		(show_idle || percent_cpu (pp) || (pp->pr_state == SRUN) || (pp->pr_state == SONPROC)) &&
+ 		(!show_uid || pp->pr_uid == (uid_t) sel->uid) &&
+ 		(show_command == NULL ||
+ 		 strstr(pp->pr_fname, show_command) != NULL))
+@@ -1606,113 +1268,54 @@
+     return ((caddr_t) & handle);
+ }
+ 
+-static char p_header[MAX_COLS];
++char fmt[MAX_COLS];			/* static area where result is built */
+ 
+ char *
+-format_process_header(struct process_select *sel, caddr_t handle, int count)
+-
+-{
+-    int cols;
+-    char *p;
+-    int *fi;
+-    struct proc_field *fp;
+-
+-    /* check for null handle */
+-    if (handle == NULL)
+-    {
+-	return("");
+-    }
+-
+-    /* remember how many columns there are on the display */
+-    cols = display_columns();
+-
+-    /* mode & threads dictate format */
+-    fi = display_fields = sel->threads ? thr_display : proc_display;
+-
+-    /* set username field correctly */
+-    if (!sel->usernames)
+-    {
+-	/* display uids */
+-	field_subst(fi, FIELD_USERNAME, FIELD_UID);
+-    }
+-    else
+-    {
+-	/* display usernames */
+-	field_subst(fi, FIELD_UID, FIELD_USERNAME);
+-    }
+-
+-    /* walk thru fields and construct header */
+-    /* are we worried about overflow??? */
+-    p = p_header;
+-    while (*fi != -1)
+-    {
+-	fp = &(proc_field[*fi++]);
+-	if (fp->min_screenwidth <= cols)
+-	{
+-	    p += sprintf(p, fp->rjust ? "%*s" : "%-*s", fp->width, fp->name);
+-	    *p++ = ' ';
+-	}
+-    }
+-    *--p = '\0';
+-
+-    return p_header;
+-}
+-
+-static char fmt[MAX_COLS];		/* static area where result is built */
+-
+-char *
+-format_next_process(caddr_t handle, char *(*get_userid)(int))
+-
+-{
+-    struct prpsinfo *pp;
+-    struct handle *hp;
+-    struct proc_field *fp;
+-    int *fi;
+-    int i;
+-    int cols;
+-    char *p;
+-    int len;
+-    int x;
+-
+-    /* find and remember the next proc structure */
+-    hp = (struct handle *)handle;
+-    pp = *(hp->next_proc++);
+-    hp->remaining--;
+-    
+-    /* grab format descriptor */
+-    fi = display_fields;
+-
+-    /* screen width is a consideration, too */
+-    cols = display_columns();
+-
+-    /* build output by field */
+-    p = fmt;
+-    len = MAX_COLS;
+-    while ((i = *fi++) != -1)
+-    {
+-	fp = &(proc_field[i]);
+-	if (len > 0 && fp->min_screenwidth <= cols)
+-	{
+-	    x = (*(fp->format))(p, len, pp);
+-	    if (x >= len)
+-	    {
+-		dprintf("format_next_process: formatter overflow: x %d, len %d, p %08x => %08x, fmt %08x - %08x\n",
+-			x, len, p, p + len, fmt, fmt + sizeof(fmt));
+-		p += len;
+-		len = 0;
+-	    }
+-	    else
+-	    {
+-		p += x;
+-		*p++ = ' ';
+-		len -= x + 1;
+-	    }
+-	}
+-    }
+-    *--p = '\0';
++format_next_process (
++		      caddr_t handle,
++		      char *(*get_userid) ())
++{
++  register struct prpsinfo *pp;
++  struct handle *hp;
++  register long cputime;
++  register double pctcpu;
++  char sb[10];
++
++  /* find and remember the next proc structure */
++  hp = (struct handle *) handle;
++  pp = *(hp->next_proc++);
++  hp->remaining--;
++
++  /* get the cpu usage and calculate the cpu percentages */
++  cputime = pp->pr_time.tv_sec;
++  pctcpu = percent_cpu (pp) / cpucount;
++
++  if (pp->pr_state == SONPROC && cpucount > 1)
++    sprintf(sb,"cpu/%-2d", pp->pr_onpro); /* XXX large #s may overflow colums */
++  else
++    *sb = '\0';
++
++  /* format this entry */
++#ifdef HAVE_SNPRINTF
++  snprintf(fmt, sizeof(fmt),
++#else
++  sprintf (fmt,
++#endif
++	   Proc_format,
++	   pp->pr_pid,
++	   (*get_userid) (pp->pr_uid),
++	   (u_short)pp->pr_fill < 999 ? (u_short)pp->pr_fill : 999,
++	   pp->pr_pri,
++	   pp->pr_nice - NZERO,
++	   format_k(SIZE_K(pp)),
++	   format_k(RSS_K(pp)),
++	   *sb ? sb : state_abbrev[(int)pp->pr_state],
++	   format_time(cputime),
++	   format_percent(pctcpu),
++	   printable(show_fullcmd ? pp->pr_psargs : pp->pr_fname));
+ 
+-    /* return the result */
+-    return(fmt);
++  /* return the result */
++  return (fmt);
+ }
+ 
+ /* comparison routines for qsort */
+@@ -1737,13 +1340,11 @@
+ #define ORDERKEY_PCTCPU  if (dresult = percent_cpu (p2) - percent_cpu (p1),\
+ 			     (result = dresult > 0.0 ? 1 : dresult < 0.0 ? -1 : 0) == 0)
+ #define ORDERKEY_CPTICKS if ((result = p2->pr_time.tv_sec - p1->pr_time.tv_sec) == 0)
+-#define ORDERKEY_STATE   if ((result = (long) (sorted_state[(int)p2->px_state] - \
+-			       sorted_state[(int)p1->px_state])) == 0)
+-#define ORDERKEY_PRIO    if ((result = p2->px_pri - p1->px_pri) == 0)
++#define ORDERKEY_STATE   if ((result = (long) (sorted_state[(int)p2->pr_state] - \
++			       sorted_state[(int)p1->pr_state])) == 0)
++#define ORDERKEY_PRIO    if ((result = p2->pr_oldpri - p1->pr_oldpri) == 0)
+ #define ORDERKEY_RSSIZE  if ((result = p2->pr_rssize - p1->pr_rssize) == 0)
+ #define ORDERKEY_MEM     if ((result = (p2->pr_size - p1->pr_size)) == 0)
+-#define ORDERKEY_LWP     if ((result = (p1->pr_lwp.pr_lwpid - p2->pr_lwp.pr_lwpid)) == 0)
+-#define ORDERKEY_PID     if ((result = (p1->pr_pid - p2->pr_pid)) == 0)
+ 
+ /* Now the array that maps process state to a weight */
+ 
+@@ -1763,9 +1364,10 @@
+ /* compare_cpu - the comparison function for sorting by cpu percentage */
+ 
+ int
+-compare_cpu (struct prpsinfo **pp1, struct prpsinfo **pp2)
+-
+-{
++compare_cpu (
++	       struct prpsinfo **pp1,
++	       struct prpsinfo **pp2)
++  {
+     register struct prpsinfo *p1;
+     register struct prpsinfo *p2;
+     register long result;
+@@ -1781,19 +1383,18 @@
+     ORDERKEY_PRIO
+     ORDERKEY_RSSIZE
+     ORDERKEY_MEM
+-    ORDERKEY_PID
+-    ORDERKEY_LWP
+     ;
+ 
+     return (result);
+-}
++  }
+ 
+ /* compare_size - the comparison function for sorting by total memory usage */
+ 
+ int
+-compare_size (struct prpsinfo **pp1, struct prpsinfo **pp2)
+-
+-{
++compare_size (
++	       struct prpsinfo **pp1,
++	       struct prpsinfo **pp2)
++  {
+     register struct prpsinfo *p1;
+     register struct prpsinfo *p2;
+     register long result;
+@@ -1809,19 +1410,18 @@
+     ORDERKEY_CPTICKS
+     ORDERKEY_STATE
+     ORDERKEY_PRIO
+-    ORDERKEY_PID
+-    ORDERKEY_LWP
+     ;
+ 
+     return (result);
+-}
++  }
+ 
+ /* compare_res - the comparison function for sorting by resident set size */
+ 
+ int
+-compare_res (struct prpsinfo **pp1, struct prpsinfo **pp2)
+-
+-{
++compare_res (
++	       struct prpsinfo **pp1,
++	       struct prpsinfo **pp2)
++  {
+     register struct prpsinfo *p1;
+     register struct prpsinfo *p2;
+     register long result;
+@@ -1837,19 +1437,18 @@
+     ORDERKEY_CPTICKS
+     ORDERKEY_STATE
+     ORDERKEY_PRIO
+-    ORDERKEY_PID
+-    ORDERKEY_LWP
+     ;
+ 
+     return (result);
+-}
++  }
+ 
+ /* compare_time - the comparison function for sorting by total cpu time */
+ 
+ int
+-compare_time (struct prpsinfo **pp1, struct prpsinfo **pp2)
+-
+-{
++compare_time (
++	       struct prpsinfo **pp1,
++	       struct prpsinfo **pp2)
++  {
+     register struct prpsinfo *p1;
+     register struct prpsinfo *p2;
+     register long result;
+@@ -1865,36 +1464,18 @@
+     ORDERKEY_PRIO
+     ORDERKEY_MEM
+     ORDERKEY_RSSIZE
+-    ORDERKEY_PID
+-    ORDERKEY_LWP
+-    ;
+-
+-    return (result);
+-}
+-
+-/* compare_pid - the comparison function for sorting by process id */
+-
+-int
+-compare_pid (struct prpsinfo **pp1, struct prpsinfo **pp2)
+-
+-{
+-    register struct prpsinfo *p1;
+-    register struct prpsinfo *p2;
+-    register long result;
+-
+-    /* remove one level of indirection */
+-    p1 = *pp1;
+-    p2 = *pp2;
+-
+-    ORDERKEY_PID
+-    ORDERKEY_LWP
+     ;
+ 
+     return (result);
+-}
++  }
+ 
+-/* get process table */
+-int
++/*
++get process table
++ V.4 only has a linked list of processes so we want to follow that
++ linked list, get all the process structures, and put them in our own
++ table
++*/
++void
+ getptable (struct prpsinfo *baseptr)
+ {
+     struct prpsinfo *currproc;	/* pointer to current proc structure	*/
+@@ -1902,19 +1483,16 @@
+     struct prstatus prstatus;     /* for additional information */
+ #endif
+     int numprocs = 0;
++    int i;
+     struct dirent *direntp;
+     struct oldproc *op;
+     hash_pos pos;
+     hash_item_pid *hi;
+-    hash_item_pidthr *hip;
+-    prheader_t *prp;
+-    lwpsinfo_t *lwpp;
+-    pidthr_t pidthr;
+     static struct timeval lasttime =
+ 	{0, 0};
+     struct timeval thistime;
+-    struct stat st;
+     double timediff;
++    double alpha, beta;
+ 
+     gettimeofday (&thistime, NULL);
+     /*
+@@ -1930,8 +1508,23 @@
+     else
+ 	timediff = 1.0e7;
+ 
+-    /* get our first procs pointer */
+-    currproc = procs_start();
++    /*
++     * constants for exponential average.  avg = alpha * new + beta * avg
++     * The goal is 50% decay in 30 sec.  However if the sample period
++     * is greater than 30 sec, there's not a lot we can do.
++     */
++    if (timediff < 30.0e7)
++    {
++	alpha = 0.5 * (timediff / 30.0e7);
++	beta = 1.0 - alpha;
++    }
++    else
++    {
++	alpha = 0.5;
++	beta = 0.5;
++    }
++
++    currproc = baseptr;
+ 
+     /* before reading /proc files, turn on root privs */
+     /* (we don't care if this fails since it will be caught later) */
+@@ -1942,219 +1535,106 @@
+     for (rewinddir (procdir); (direntp = readdir (procdir));)
+     {
+ 	int fd;
+-	int pid;
+-	char buf[40];
++	char buf[30];
+ 
+-	/* skip dot files */
+ 	if (direntp->d_name[0] == '.')
+ 	    continue;
+ 
+-	/* convert pid to a number (and make sure its valid) */
+-	pid = atoi(direntp->d_name);
+-	if (pid <= 0)
+-	    continue;
+-
+-	/* fetch the old proc data */
+-	op = (struct oldproc *)hash_lookup_pid(prochash, pid);
+-	if (op == NULL)
+-	{
+-	    /* new proc: create an entry for it */
+-	    op = (struct oldproc *)malloc(sizeof(struct oldproc));
+-	    hash_add_pid(prochash, pid, (void *)op);
+-	    op->pid = pid;
+-	    op->fd_psinfo = -1;
+-	    op->fd_lpsinfo = -1;
+-	    op->oldtime = 0.0;
+-	}
++#ifdef USE_NEW_PROC
++#ifdef HAVE_SNPRINTF
++	snprintf(buf, sizeof(buf), "%s/psinfo", direntp->d_name);
++#else
++	sprintf(buf, "%s/psinfo", direntp->d_name);
++#endif
+ 
+-	/* do we have a cached file? */
+-	fd = op->fd_psinfo;
+-	if (fd == -1)
+-	{
+-	    /* no: open the psinfo file */
+-	    snprintf(buf, sizeof(buf), "%s/psinfo", direntp->d_name);
+-	    if ((fd = open(buf, O_RDONLY)) < 0)
+-	    {
+-		/* cleanup??? */
+-		continue;
+-	    }
+-	}
++	if ((fd = open (buf, O_RDONLY)) < 0)
++	    continue;
+ 
+-	/* read data from the file */
+-#ifdef USE_NEW_PROC
+-	if (pread(fd, currproc, sizeof(psinfo_t), 0) != sizeof(psinfo_t))
++	if (read(fd, currproc, sizeof(psinfo_t)) != sizeof(psinfo_t))
+ 	{
+ 	    (void) close (fd);
+-	    op->fd_psinfo = -1;
+ 	    continue;
+ 	}       
+ #else
+-	if (ioctl(fd, PIOCPSINFO, currproc) < 0)
++	if ((fd = open (direntp->d_name, O_RDONLY)) < 0)
++	    continue;
++
++	if (ioctl (fd, PIOCPSINFO, currproc) < 0)
+ 	{
+-	    (void) close(fd);
+-	    op->fd_psinfo = -1;
++	    (void) close (fd);
+ 	    continue;
+ 	}
+ 
+-	if (ioctl(fd, PIOCSTATUS, &prstatus) < 0)
++	if (ioctl (fd, PIOCSTATUS, &prstatus) < 0)
+ 	{
+ 	    /* not a show stopper -- just fill in the needed values */
+ 	    currproc->pr_fill = 0;
+-	    currproc->px_onpro = 0;
++	    currproc->pr_onpro = 0;
+ 	}
+ 	else
+ 	{
+ 	    /* copy over the values we need from prstatus */
+ 	    currproc->pr_fill = (short)prstatus.pr_nlwp;
+-	    currproc->px_onpro = prstatus.pr_processor;
++	    currproc->pr_onpro = prstatus.pr_processor;
+ 	}
+ #endif
+ 
+ 	/*
+-	 * We track our own cpu% usage.
+-	 * We compute it based on CPU since the last update by calculating
+-	 * the difference in cumulative cpu time and dividing by the amount
+-	 * of time we measured between updates (timediff).
+-	 * NOTE:  Solaris 2.4 and higher do maintain CPU% in psinfo,
+-	 * but it does not produce the kind of results we really want,
+-	 * so we don't use it even though its there.
++	 * SVr4 doesn't keep track of CPU% in the kernel, so we have
++	 * to do our own.  See if we've heard of this process before.
++	 * If so, compute % based on CPU since last time.
++	 * NOTE:  Solaris 2.4 and higher do maintain CPU% in prpsinfo.
++	 * ALSO NOTE: the pctcpu recorded in the proc structure does not
++	 * produce the kind of results we really want, so we don't use
++	 * it even though its there.
+ 	 */
+-	if (lasttime.tv_sec > 0)
+-	{
+-	    percent_cpu(currproc) =
+-		(TIMESPEC_TO_DOUBLE(currproc->pr_time) - op->oldtime) / timediff;
+-	}
+-	else
+-	{
+-	    /* first screen -- no difference is possible */
+-	    percent_cpu(currproc) = 0.0;
+-	}
+-
+-	/* save data for next time */
+-	op->pid = currproc->pr_pid;
+-	op->oldtime = TIMESPEC_TO_DOUBLE(currproc->pr_time);
+-	op->owner_uid = currproc->pr_uid;
+-	op->seen = 1;
+-
+-	/* cache the file descriptor if we can */
+-	if (fd < maxfiles)
+-	{
+-	    op->fd_psinfo = fd;
+-	}
+-	else
+-	{
+-	    (void) close(fd);
+-	}
+-
+-#ifdef USE_NEW_PROC
+-	/* collect up the threads */
+-	/* use cached lps file if it's there */
+-	fd = op->fd_lpsinfo;
+-	if (fd == -1)
+-	{
+-	    snprintf(buf, sizeof(buf), "%s/lpsinfo", direntp->d_name);
+-	    fd = open(buf, O_RDONLY);
+-	}
+-
+-	/* make sure we have a valid descriptor and the file's current size */
+-	if (fd >= 0 && fstat(fd, &st) != -1)
++	op = (struct oldproc *)hash_lookup_pid(prochash, currproc->pr_pid);
++	if (op == NULL)
+ 	{
+-	    char *p;
+-	    int i;
+-
+-	    /* read the whole file */
+-	    p = malloc(st.st_size);
+-	    (void)pread(fd, p, st.st_size, 0);
+-
+-	    /* cache the file descriptor if we can */
+-	    if (fd < maxfiles)
++	    /* new entry */
++#ifdef PROC_HAS_PCTCPU
++	    weighted_cpu (currproc) =
++		percent_cpu (currproc);
++#else
++	    if (lasttime.tv_sec)
+ 	    {
+-		op->fd_lpsinfo = fd;
++		percent_cpu (currproc) =
++		    (currproc->pr_time.tv_sec * 1.0e9 +
++		     currproc->pr_time.tv_nsec) / timediff;
++		weighted_cpu (currproc) =
++		    percent_cpu (currproc);
+ 	    }
+ 	    else
+-	    {
+-		(void)close(fd);
+-	    }
+-
+-	    /* the file starts with a struct prheader */
+-	    prp = (prheader_t *)p;
+-	    p += sizeof(prheader_t);
+-
+-	    /* there are prp->pr_nent entries in the file */
+-	    for (i = 0; i < prp->pr_nent; i++)
+-	    {
+-		/* process this entry */
+-		lwpp = (lwpsinfo_t *)p;
+-		p += prp->pr_entsize;
+-
+-		/* fetch the old thread data */
+-		/* this hash is indexed by both pid and lwpid */
+-		pidthr.k_pid = currproc->pr_pid;
+-		pidthr.k_thr = lwpp->pr_lwpid;
+-		dprintf("getptable: processing %d.%d\n",
+-			pidthr.k_pid, pidthr.k_thr);
+-		op = (struct oldproc *)hash_lookup_pidthr(threadhash, pidthr);
+-		if (op == NULL)
+-		{
+-		    /* new thread: create an entry for it */
+-		    op = (struct oldproc *)malloc(sizeof(struct oldproc));
+-		    hash_add_pidthr(threadhash, pidthr, (void *)op);
+-		    op->pid = pid;
+-		    op->lwpid = lwpp->pr_lwpid;
+-		    op->oldtime = 0.0;
+-		    dprintf("getptable: %d.%d: new thread\n",
+-			    pidthr.k_pid, pidthr.k_thr);
+-		}
+-
+-		/* are we showing individual threads? */
+-		if (show_threads)
+-		{
+-		    /* yes: if this is the first thread we reuse the proc
+-		       entry we have, otherwise we create a new one by
+-		       duping the current one */
+-		    if (i > 0)
+-		    {
+-			currproc = procs_dup(currproc);
+-			numprocs++;
+-		    }
+-
+-		    /* yes: copy over thread-specific data */
+-		    currproc->pr_time = lwpp->pr_time;
+-		    currproc->px_state = lwpp->pr_state;
+-		    currproc->px_pri = lwpp->pr_pri;
+-		    currproc->px_onpro = lwpp->pr_onpro;
+-		    currproc->pr_lwp.pr_lwpid = lwpp->pr_lwpid;
+-
+-		    /* calculate percent cpu for just this thread */
+-		    if (lasttime.tv_sec > 0)
+-		    {
+-			percent_cpu(currproc) =
+-			    (TIMESPEC_TO_DOUBLE(lwpp->pr_time) - op->oldtime) /
+-			    timediff;
+-		    }
+-		    else
+-		    {
+-			/* first screen -- no difference is possible */
+-			percent_cpu(currproc) = 0.0;
+-		    }
+-
+-		    dprintf("getptable: %d.%d: time %.0f, state %d, pctcpu %.2f\n",
+-			    currproc->pr_pid, lwpp->pr_lwpid,
+-			    TIMESPEC_TO_DOUBLE(currproc->pr_time),
+-			    currproc->px_state, percent_cpu(currproc));
+-		}
+-
+-		/* save data for next time */
+-		op->oldtime = TIMESPEC_TO_DOUBLE(lwpp->pr_time);
+-		op->seen = 1;
++	    {			/* first screen -- no difference is possible */
++		percent_cpu (currproc) = 0.0;
++		weighted_cpu (currproc) = 0.0;
+ 	    }
+-	    free(p);
++#endif
+ 	}
++	else
++	{
++	    /* existing entry */
++#ifndef PROC_HAS_PCTCPU
++	    percent_cpu (currproc) =
++		((currproc->pr_time.tv_sec * 1.0e9 +
++		  currproc->pr_time.tv_nsec)
++		 - op->oldtime) / timediff;
+ #endif
++	    weighted_cpu (currproc) =
++		op->oldpct * beta + percent_cpu (currproc) * alpha;
++	}
+ 
+-	/* move to next */
+ 	numprocs++;
+-	currproc = procs_next();
++	currproc = (struct prpsinfo *) ((char *) currproc + PRPSINFOSIZE);
++	(void) close(fd);
++
++	/* Atypical place for growth */
++	if (numprocs >= maxprocs)
++	{
++	    reallocproc(2 * numprocs);
++	    currproc = (struct prpsinfo *)
++		((char *)baseptr + PRPSINFOSIZE * numprocs);
++	}
+     }
+ 
+ #ifndef USE_NEW_PROC
+@@ -2164,52 +1644,49 @@
+ 
+     dprintf("getptable saw %d procs\n", numprocs);
+ 
+-    /* scan the hash tables and remove dead entries */
+-    hi = hash_first_pid(prochash, &pos);
+-    while (hi != NULL)
++    if (nproc != numprocs)
++	nproc = numprocs;
++
++    /*
++     * Save current CPU time for next time around
++     */
++    i = 0;
++    currproc = baseptr;
++    while (i++ < nproc)
+     {
+-	op = (struct oldproc *)(hi->value);
+-	if (op->seen)
+-	{
+-	    op->seen = 0;
+-	}
+-	else
++	op = (struct oldproc *)hash_lookup_pid(prochash, currproc->pr_pid);
++	if (op == NULL)
+ 	{
+-	    dprintf("removing %d from prochash\n", op->pid);
+-	    if (op->fd_psinfo >= 0)
+-	    {
+-		(void)close(op->fd_psinfo);
+-	    }
+-	    if (op->fd_lpsinfo >= 0)
+-	    {
+-		(void)close(op->fd_lpsinfo);
+-	    }
+-	    hash_remove_pos_pid(&pos);
+-	    free(op);
++	    op = (struct oldproc *)malloc(sizeof(struct oldproc));
++	    hash_add_pid(prochash, currproc->pr_pid, (void *)op);
+ 	}
+-	hi = hash_next_pid(&pos);
++	op->oldpid = currproc->pr_pid;
++	op->oldtime = (currproc->pr_time.tv_sec * 1.0e9 +
++		       currproc->pr_time.tv_nsec);
++	op->oldpct = weighted_cpu (currproc);
++	op->seen = 1;
++	currproc = (struct prpsinfo *) ((char *) currproc + PRPSINFOSIZE);
+     }
+ 
+-    hip = hash_first_pidthr(threadhash, &pos);
+-    while (hip != NULL)
++    /* scan the hash table and remove dead entries */
++    hi = hash_first_pid(prochash, &pos);
++    while (hi != NULL)
+     {
+-	op = (struct oldproc *)(hip->value);
++	op = (struct oldproc *)(hi->value);
+ 	if (op->seen)
+ 	{
+ 	    op->seen = 0;
+ 	}
+ 	else
+ 	{
+-	    dprintf("removing %d from threadhash\n", op->pid);
+-	    hash_remove_pos_pidthr(&pos);
++	    dprintf("removing %d from hash\n", op->oldpid);
++	    hash_remove_pos_pid(&pos);
+ 	    free(op);
+ 	}
+-	hip = hash_next_pidthr(&pos);
++	hi = hash_next_pid(&pos);
+     }
+ 
+     lasttime = thistime;
+-
+-    return numprocs;
+ }
+ 
+ /*
+@@ -2224,15 +1701,15 @@
+ int
+ proc_owner (int pid)
+ {
+-    struct oldproc *op;
+-
+-    /* we keep this information in the hash table */
+-    op = (struct oldproc *)hash_lookup_pid(prochash, (pid_t)pid);
+-    if (op != NULL)
++    register struct prpsinfo *p;
++    int i;
++    for (i = 0, p = pbase; i < nproc;
++	 i++, p = (struct prpsinfo *) ((char *) p + PRPSINFOSIZE))
+     {
+-	return((int)(op->owner_uid));
++	if (p->pr_pid == (pid_t)pid)
++	    return ((int)p->pr_uid);
+     }
+-    return(-1);
++    return (-1);
+ }
+ 
+ /* older revisions don't supply a setpriority */
+@@ -2268,3 +1745,31 @@
+ }
+ #endif
+ 
++
++/*
++ * When we reach a proc limit, we need to realloc the stuff.
++ */
++static void reallocproc(int n)
++{
++    int bytes;
++
++    if (n < maxprocs)
++	return;
++
++    dprintf("reallocproc(%d): reallocating from %d\n", n, maxprocs);
++
++    maxprocs = n;
++
++    /* allocate space for proc structure array and array of pointers */
++    bytes = maxprocs * PRPSINFOSIZE;
++    pbase = (struct prpsinfo *) realloc(pbase, bytes);
++    pref = (struct prpsinfo **) realloc(pref,
++					maxprocs * sizeof(struct prpsinfo *));
++
++    /* Just in case ... */
++    if (pbase == (struct prpsinfo *) NULL || pref == (struct prpsinfo **) NULL)
++    {
++	fprintf (stderr, "%s: can't allocate sufficient memory\n", myname);
++	quit(1);
++    }
++}

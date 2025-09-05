@@ -7,10 +7,10 @@
 # Check the following 4 variables before running the script
 topdir=top
 version=3.8beta1
-pkgver=1
+pkgver=2
 source[0]=http://www.unixtop.org/dist/$topdir-$version.tar.bz2
 # If there are no patches, simply comment this
-#patch[0]=
+patch[0]=revert-ioctl-procfs-sol25.patch
 
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
