@@ -6,7 +6,7 @@
 ###########################################################
 # Check the following 4 variables before running the script
 topdir=tar
-version=1.28
+version=1.30
 pkgver=1
 source[0]=ftp://ftp.sunet.se/pub/gnu/tar/$topdir-$version.tar.bz2
 # If there are no patches, simply comment this
@@ -17,7 +17,12 @@ source[0]=ftp://ftp.sunet.se/pub/gnu/tar/$topdir-$version.tar.bz2
 
 # Global settings
 export CPPFLAGS="-I$prefix/include"
+#export CFLAGS="-D_FILE_OFFSET_BITS=64"
 export LDFLAGS="-L$prefix/lib -R$prefix/lib"
+
+# solaris 2.5.1 does not have ftello
+configure_args+=(--disable-largefile)
+
 gnu_link tar
 
 reg prep
