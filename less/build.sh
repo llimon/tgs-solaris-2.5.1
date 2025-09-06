@@ -7,7 +7,7 @@
 # Check the following 4 variables before running the script
 topdir=less
 version=530
-pkgver=1
+pkgver=2
 source[0]=http://www.greenwoodsoftware.com/less/$topdir-$version.tar.gz
 # If there are no patches, simply comment this
 #patch[0]=
@@ -18,6 +18,7 @@ source[0]=http://www.greenwoodsoftware.com/less/$topdir-$version.tar.gz
 # Global settings
 export CPPFLAGS="-I$prefix/include"
 export LDFLAGS="-L$prefix/lib -R$prefix/lib"
+export LIBS="-lw"
 configure_args+=(--with-editor=/bin/vi)
 
 reg prep
