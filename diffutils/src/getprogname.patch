@@ -1,21 +1,28 @@
 diff -ruN a/lib/getprogname.c b/lib/getprogname.c
 --- a/lib/getprogname.c	2018-12-23 17:25:29.000000000 +0000
-+++ b/lib/getprogname.c	2025-09-05 03:27:11.144380370 +0000
-@@ -241,7 +241,64 @@
++++ b/lib/getprogname.c	2025-09-06 22:12:40.057211515 +0000
+@@ -43,6 +43,16 @@
+ # include <string.h>
+ #endif
+ 
++#ifdef __sun
++# include <stdio.h>
++# include <string.h>
++# include <unistd.h>
++# include <fcntl.h>
++# include <sys/types.h>
++# include <sys/stat.h>
++# include <sys/procfs.h>
++#endif
++
+ #ifdef __sgi
+ # include <string.h>
+ # include <unistd.h>
+@@ -240,6 +250,44 @@
+         }
      }
    return NULL;
- # else
--#  error "getprogname module not ported to this OS"
-+
-+#include <stdio.h>
-+#include <string.h>
-+#include <unistd.h>
-+#include <fcntl.h>
-+#include <sys/types.h>
-+#include <sys/stat.h>
-+#include <sys/procfs.h>
-+
-+const char *getprogname(void) {
++# elif defined __sun
 +    static const char *progname = NULL;
 +    int fd;
 +    pid_t pid;
@@ -28,15 +35,11 @@ diff -ruN a/lib/getprogname.c b/lib/getprogname.c
 +    // Get the current process ID
 +    pid = getpid();
 +
-+    // Construct the path to the process file in /proc.
-+    // The path is /proc/pid on Solaris 2.5.1
-+    //snprintf(proc_path, sizeof(proc_path), "/proc/%d", pid);
-+
-+    // We are careful to ensure the buffer is large enough.
++    // We are careful to ensure the buffer is large enough., sol25 does not have snprintf
 +    sprintf(proc_path, "/proc/%d", pid);
 +
 +
-+    progname = "unknown1";
++    progname = "unknown";
 +
 +    // Open the process file for reading
 +    fd = open(proc_path, O_RDONLY);
@@ -49,21 +52,14 @@ diff -ruN a/lib/getprogname.c b/lib/getprogname.c
 +    if (ioctl(fd, PIOCPSINFO, &psinfo) < 0) {
 +        perror("ioctl(PIOCPSINFO) failed");
 +        close(fd);
-+        progname = "unknown2";
++        progname = "unknown";
 +    }
 +
 +    // Close the file descriptor
 +    close(fd);
-+    //strncpy(progname, psinfo.pr_fname, sizeof(progname) - 1);
 +    progname = strdup( psinfo.pr_fname);
 +
-+
-+
-+    //return psinfo.pr_fname;
 +    return progname;
-+}
-+
-+
+ # else
+ #  error "getprogname module not ported to this OS"
  # endif
- }
- 
