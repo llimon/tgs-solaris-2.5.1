@@ -1,0 +1,65 @@
+diff -ruN a/gnu/getprogname.c b/gnu/getprogname.c
+--- a/gnu/getprogname.c	2025-09-06 23:01:05.450997926 +0000
++++ b/gnu/getprogname.c	2025-09-06 23:03:51.513564770 +0000
+@@ -43,6 +43,16 @@
+ # include <string.h>
+ #endif
+ 
++#ifdef __sun
++# include <stdio.h>
++# include <string.h>
++# include <unistd.h>
++# include <fcntl.h>
++# include <sys/types.h>
++# include <sys/stat.h>
++# include <sys/procfs.h>
++#endif
++
+ #ifdef __sgi
+ # include <string.h>
+ # include <unistd.h>
+@@ -176,6 +186,44 @@
+         }
+     }
+   return NULL;
++# elif defined __sun
++    static const char *progname = NULL;
++    int fd;
++    pid_t pid;
++    // Buffer for the path, max PID is usually INT_MAX, which is 2147483647
++    // So 10 digits + 6 for "/proc/%d" + 1 for null terminator = 17.
++    // A safe size is 32.
++    char proc_path[64];
++    prpsinfo_t psinfo;
++
++    // Get the current process ID
++    pid = getpid();
++
++    // We are careful to ensure the buffer is large enough., sol25 does not have snprintf
++    sprintf(proc_path, "/proc/%d", pid);
++
++
++    progname = "unknown";
++
++    // Open the process file for reading
++    fd = open(proc_path, O_RDONLY);
++    if (fd < 0) {
++        perror("open failed");
++        return progname;
++    }
++
++    // Issue the PIOCPSINFO ioctl to get the process information
++    if (ioctl(fd, PIOCPSINFO, &psinfo) < 0) {
++        perror("ioctl(PIOCPSINFO) failed");
++        close(fd);
++        progname = "unknown";
++    }
++
++    // Close the file descriptor
++    close(fd);
++    progname = strdup( psinfo.pr_fname);
++
++    return progname;
+ # else
+ #  error "getprogname module not ported to this OS"
+ # endif
