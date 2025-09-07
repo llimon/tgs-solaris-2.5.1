@@ -1,5 +1,8 @@
 CHANGELOG
 ---------
+* Sun Sep 7 2025 Luis Limon - 0.19.8.1-2
+- build with -lgcc_s -lpthread -liconv for solaris 2.5.1 support
+
 * Thu Apr 12 2018 Tom G. Christensen <swpkg@jupiterrise.com> - 0.19.8.1-1
 - Update to 0.19.8.1
 

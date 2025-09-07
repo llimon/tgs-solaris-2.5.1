@@ -7,7 +7,7 @@
 # Check the following 4 variables before running the script
 topdir=gettext
 version=0.19.8.1
-pkgver=1
+pkgver=2
 source[0]=https://mirrors.kernel.org/gnu/gettext/$topdir-$version.tar.lz
 # If there are no patches, simply comment this
 #patch[0]=
@@ -17,7 +17,7 @@ source[0]=https://mirrors.kernel.org/gnu/gettext/$topdir-$version.tar.lz
 
 # Global settings
 export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
+export LDFLAGS="-L$prefix/lib -R$prefix/lib -liconv -lgcc_s -lpthread"
 configure_args+=(--with-libiconv-prefix=$prefix --disable-java --disable-native-java --disable-openmp)
 
 gnu_link autopoint envsubst gettext gettext.sh gettextize msgattrib msgcat msgcmp msgcomm msgconv msgen msgexec msgfilter msgfmt msggrep msginit msgmerge msgunfmt msguniq ngettext recode-sr-latin xgettext
