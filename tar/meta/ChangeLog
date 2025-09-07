@@ -2,7 +2,8 @@ CHANGELOG
 ---------
 * Thu Sep 6 2025 Luis Limon - 1.30-1
 - Update to 1.30
-- build with --disable-large files for solaris 2.5.1
+- add support for getprogname
+- replace ftello with custom function
 
 * Thu Jul 31 2014 Tom G. Christensen <swpkg@jupiterrise.com> - 1.28-1
 - Update to 1.28
