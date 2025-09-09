@@ -1,0 +1,190 @@
+diff -ruN a/mbstate.h b/mbstate.h
+--- a/mbstate.h	1969-12-31 17:00:00.000000000 +0000
++++ b/mbstate.h	2025-09-09 00:39:25.568239662 +0000
+@@ -0,0 +1,27 @@
++/*#include <wchar.h>  // Should be the correct solution*/
++
++/*
++*  If your /usr/include/wchar.h is missing mbstate_t
++* 
++*
++* You can apeend include this file and save the file in your default include folder.
++* include <mbstate.h>
++*
++* This way you will not need to patch source code using mbstate_t
++*
++* Copyright(c) 2025, Luis Limon
++*/
++
++#ifndef HAVE_MBSTATE_T
++/* A temporary workaround if wchar.h is broken or missing. */
++typedef struct {
++    int __opaque[4]; /* Sufficiently large to hold implementation-defined state */
++} mbstate_t;
++#endif
++
++/* ... inside the _rl_mb_strcaseeqn function ... */
++mbstate_t ps1;      // or perhaps mbstate_t *ps1; if dynamically allocated
++mbstate_t ps2;      // or perhaps mbstate_t *ps2; if dynamically allocated
++const char *s2;     // The second string to compare
++int flags;          // Integer for internal function flags
++
+diff -ruN a/mbutil.c b/mbutil.c
+--- a/mbutil.c	2024-08-14 07:57:57.000000000 +0000
++++ b/mbutil.c	2025-09-09 00:39:14.232058496 +0000
+@@ -73,8 +73,143 @@
+ /*								    */
+ /* **************************************************************** */
+ 
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <wchar.h>
++#include <locale.h>
++#include <string.h>
++
++#include "mbstate.h"
++
++#include <wchar.h>
++#include <errno.h>
++
++// A simplified, example-only mbrtowc for UTF-8.
++// **This is not a robust, locale-aware implementation for production use.**
++size_t mbrtowc(wchar_t *restrict pwc, const char *restrict s, size_t n, mbstate_t *restrict ps) {
++    // This is a simplified function and does not use or modify the mbstate_t.
++    // A proper implementation would use it for state-dependent encodings.
++    (void)ps; // Cast to void to suppress unused parameter warning.
++
++    // Case 1: s is a null pointer. Reset the state and return 0 for stateless encodings.
++    if (s == NULL) {
++        if (pwc) {
++            *pwc = 0; // Store the null wide character.
++        }
++        return 0;
++    }
++
++    // Case 2: Handle the null terminator.
++    if (*s == '\0') {
++        if (pwc) {
++            *pwc = L'\0';
++        }
++        return 0;
++    }
++
++    // Inspect the first byte to determine the length of the UTF-8 character.
++    unsigned char byte = (unsigned char)s[0];
++
++    // Handle 1-byte character (ASCII)
++    if (byte <= 0x7F) {
++        if (n < 1) {
++            return (size_t)-2; // Incomplete sequence.
++        }
++        if (pwc) {
++            *pwc = (wchar_t)byte;
++        }
++        return 1;
++    }
++
++    // Handle 2-byte character
++    if ((byte & 0xE0) == 0xC0) {
++        if (n < 2) {
++            return (size_t)-2;
++        }
++        unsigned char byte2 = (unsigned char)s[1];
++        if ((byte2 & 0xC0) != 0x80) {
++            errno = EILSEQ;
++            return (size_t)-1; // Invalid sequence.
++        }
++        if (pwc) {
++            *pwc = (wchar_t)(((byte & 0x1F) << 6) | (byte2 & 0x3F));
++        }
++        return 2;
++    }
++
++    // Handle 3-byte character
++    if ((byte & 0xF0) == 0xE0) {
++        if (n < 3) {
++            return (size_t)-2;
++        }
++        unsigned char byte2 = (unsigned char)s[1];
++        unsigned char byte3 = (unsigned char)s[2];
++        if ((byte2 & 0xC0) != 0x80 || (byte3 & 0xC0) != 0x80) {
++            errno = EILSEQ;
++            return (size_t)-1;
++        }
++        if (pwc) {
++            *pwc = (wchar_t)(((byte & 0x0F) << 12) | ((byte2 & 0x3F) << 6) | (byte3 & 0x3F));
++        }
++        return 3;
++    }
++
++    // Fallback for other byte lengths or invalid sequences.
++    errno = EILSEQ;
++    return (size_t)-1;
++}
++
++
++// A custom function to convert a multibyte string to a wide character string
++size_t mbstowcs_custom(wchar_t *dest, const char *src, size_t n) {
++    mbstate_t state;
++    memset(&state, 0, sizeof(state)); // Initialize conversion state
++
++    size_t converted_count = 0;
++    const char *p_src = src;
++    wchar_t *p_dest = dest;
++
++    // Loop until the source string is fully converted or the destination buffer is full
++    while (converted_count < n) {
++        wchar_t wc;
++        size_t len = mbrtowc(&wc, p_src, MB_CUR_MAX, &state);
++
++        // Handle different return values from mbrtowc()
++        if (len == 0) {
++            // Null terminator found
++            *p_dest = L'\0';
++            converted_count++;
++            break;
++        } else if (len == (size_t)-1) {
++            // Encoding error
++            fprintf(stderr, "Invalid multibyte sequence at byte %zd\n", p_src - src);
++            return (size_t)-1;
++        } else if (len == (size_t)-2) {
++            // Incomplete multibyte character
++            fprintf(stderr, "Incomplete multibyte sequence at end of string\n");
++            // Optionally, handle this case by trying to read more data
++            return (size_t)-1;
++        } else {
++            // Valid multibyte character was converted
++            *p_dest = wc;
++            p_src += len; // Advance the source pointer by the number of bytes consumed
++            p_dest++;
++            converted_count++;
++        }
++    }
++    return converted_count;
++}
++
++
+ #if defined(HANDLE_MULTIBYTE)
+ 
++
++
++
++
++
++
+ /* **************************************************************** */
+ /*								    */
+ /*		UTF-8 specific Character Utility Functions	    */
+diff -ruN a/rlprivate.h b/rlprivate.h
+--- a/rlprivate.h	2025-03-07 15:51:02.000000000 +0000
++++ b/rlprivate.h	2025-09-09 00:39:03.415885639 +0000
+@@ -22,7 +22,7 @@
+ 
+ #if !defined (_RL_PRIVATE_H_)
+ #define _RL_PRIVATE_H_
+-
++#include <signal.h>
+ #include "rlconf.h"	/* for VISIBLE_STATS */
+ #include "rlstdc.h"
+ #include "posixjmp.h"	/* defines procenv_t */

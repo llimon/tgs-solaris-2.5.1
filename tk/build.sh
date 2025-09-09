@@ -17,7 +17,7 @@ source[0]=${topdir}${version}-src.tar.gz
 
 # Global settings
 export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
+export LDFLAGS="-L$prefix/lib -R$prefix/lib -lgcc_s"
 configure_args=(--prefix=$prefix --mandir=$prefix/$_mandir --disable-symbols --enable-man-symlinks --with-tcl=${prefix}/${_libdir})
 topsrcdir=$topdir$version
 

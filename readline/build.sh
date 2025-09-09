@@ -6,27 +6,19 @@
 ###########################################################
 # Check the following 4 variables before running the script
 topdir=readline
-version=6.3
+version=8.3
 pkgver=1
 source[0]=ftp://ftp.sunet.se/pub/gnu/readline/$topdir-$version.tar.gz
 # If there are no patches, simply comment this
-patch[0]=readline63-001
-patch[1]=readline63-002
-patch[2]=readline63-003
-patch[3]=readline63-004
-patch[4]=readline63-005
-patch[5]=readline63-006
-patch[6]=readline63-007
-patch[7]=readline63-008
+patch[0]=mbrtowc.patch
 
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
 export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
-configure_args+=(--disable-static)
-patch_prefix=-p0
+export LDFLAGS="-L$prefix/lib -R$prefix/lib -lgcc_s -lsnprintf -lw"
+#configure_args+=(--disable-static)
 
 reg prep
 prep()
