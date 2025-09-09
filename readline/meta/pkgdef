@@ -8,6 +8,7 @@ pkgver="$pkgver"
 files(-,root,bin)
 default_docs
 $_libdir/*.so.*
+$_libdir/*.a.*
 $_infodir/rluserman.info*
 
 [readline-devel]
@@ -20,7 +21,9 @@ pkgver="$pkgver"
 files(-,root,bin)
 $_includedir/readline
 $_libdir/*.so
+$_libdir/*.a
+$_libdir/pkgconfig/*
 $_infodir/history.info*
 $_infodir/readline.info*
+$_sharedir/readline/*
 $_mandir/man3
-

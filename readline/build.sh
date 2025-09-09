@@ -6,11 +6,11 @@
 ###########################################################
 # Check the following 4 variables before running the script
 topdir=readline
-version=8.3
+version=5.2
 pkgver=1
 source[0]=ftp://ftp.sunet.se/pub/gnu/readline/$topdir-$version.tar.gz
 # If there are no patches, simply comment this
-patch[0]=mbrtowc.patch
+#patch[0]=mbrtowc.patch
 
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions

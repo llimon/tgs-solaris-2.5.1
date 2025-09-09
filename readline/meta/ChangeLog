@@ -1,10 +1,7 @@
 CHANGELOG
 ---------
-* Tues Sep 9 2025 Luis Limon - 8.3-1
-- Update to 8.3, 6.3p8 is coredumping anything that uses it.
-- Implemented custom mbrtowc and mbstate_t. supporting ONLY UTF-8. Since sol-2.5.1...
-- is not fully wide encoding capable, I see no issue. It is possible to write a ...
-- replacement using iconv but but complicated.
+* Tues Sep 9 2025 Luis Limon - 5.2-1
+- Downgrade due to missing mbstate in sol-2.5.1
 
 * Sun Apr 19 2015 Tom G. Christensen <swpkg@jupiterrise.com> - 6.3-1
 - Update to 6.3p8
