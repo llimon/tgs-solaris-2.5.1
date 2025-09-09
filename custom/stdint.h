@@ -64,25 +64,41 @@
     #define _UINTMAX_T
     #endif
 
+
+/* Define int_fast types.  short is often slow */
+/* some come from gcc: ./sparc-sun-solaris2.5.1/libgfortran/gstdint.h */
+
+
     // Fastest integer types
     #ifndef _INT_FAST8_T
-    typedef int                int_fast8_t;
+    typedef int8_t       int_fast8_t;
     #define _INT_FAST8_T
     #endif
 
     #ifndef _UINT_FAST8_T
-    typedef unsigned int       uint_fast8_t;
+    typedef uint8_t      uint_fast8_t;
     #define _UINT_FAST8_T
     #endif
 
     #ifndef _INT_FAST16_T
-    typedef int                int_fast16_t;
+    typedef int          int_fast16_t;
     #define _INT_FAST16_T
     #endif
 
     #ifndef _UINT_FAST16_T
-    typedef unsigned int       uint_fast16_t;
+    typedef unsigned int uint_fast16_t;
     #define _UINT_FAST16_T
+    #endif
+    #ifndef _INT_FAST32_T
+    typedef int32_t      int_fast32_t;
+    #endif
+
+
+    #ifdef _INT64_T
+    typedef int64_t      int_fast64_t;
+    #endif
+    #ifdef _UINT64_T
+    typedef uint64_t     uint_fast64_t;
     #endif
 
 #endif 
