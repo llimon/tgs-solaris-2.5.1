@@ -17,7 +17,7 @@ patch[1]=expat-2.5.0-no-strtof.patch
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
-export LDFLAGS="-L/usr/tgcware/lib -R/usr/tgcware/lib"
+export LDFLAGS="-L/usr/tgcware/lib -R/usr/tgcware/lib -lgcc_s"
 export CPPFLAGS="-I/usr/tgcware/include"
 
 reg prep
