@@ -30,9 +30,9 @@ reg build
 build()
 {
     setdir source
-    ${__make} -f Makefile-libbz2_so CC="gcc -R$prefix/lib"
+    ${__make} -f Makefile-libbz2_so CC="gcc -fPIC -lgcc_s -R$prefix/lib"
     rm -f *.o
-    ${__make} -f Makefile LDFLAGS="-R$prefix/lib"
+    ${__make} -f Makefile CC="gcc -fPIC" LDFLAGS="-R$prefix/lib -lgcc_s"
 }
 
 reg check
