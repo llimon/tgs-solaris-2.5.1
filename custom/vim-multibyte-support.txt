@@ -1,0 +1,12 @@
+vim-8.2.4804:
+
+Background: Solaris 2.5.1 does not fully support multi-byte
+checking --enable-autoservername argument... no
+checking --enable-multibyte argument... no
+configure: error: The multi-byte feature can no longer be disabled. If you have
+                a problem with this, discuss on the Vim mailing list.
+
+1st try removing the --disable-multibyte code check
+
+If you are compiling for a legacy system like Solaris 2.5.1, which has limited multibyte support, Vim 7.3 is a logical choice. It is from an era when non-multibyte systems were still a consideration.
+
