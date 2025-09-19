@@ -11,22 +11,27 @@ basever=8.2
 # Check the following 4 variables before running the script
 topdir=vim
 version=${basever}.${patchlevel}
-pkgver=1
+pkgver=2
 source[0]="https://github.com/vim/vim/archive/v${basever}.${repo_pl}.tar.gz#/${topdir}-${version}.tar.gz"
 # If there are no patches, simply comment this
 patch[0]=vim-8.2.4804-socklen_t.patch
+patch[1]=sol2.5.1.patch
 
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
-export CPPFLAGS="-I/usr/tgcware/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
-basic_args=(--prefix=$prefix --without-local-dir --with-features=huge)
-basic_args+=(--enable-multibyte --disable-perlinterp --disable-pythoninterp)
+export CPPFLAGS="-I/usr/tgcware/include -I/usr/tgcware/include/ncurses "
+export LDFLAGS="-L$prefix/lib -R$prefix/lib -liconv -lgcc_s -lsnprintf -lw"
+export SHELL=/usr/tgcware/bin/bash
+export CONFIG_SHELL=/usr/tgcware/bin/bash
+
+## Features = normal, we are building for very old hardware. Need to preserver memory!
+basic_args=(--prefix=$prefix --without-local-dir --with-features=normal)
+basic_args+=(--disable-multibyte --disable-perlinterp --disable-pythoninterp)
 basic_args+=(--disable-tclinterp --disable-netbeans)
-basic_args+=(--with-compiledby="<swpkg@jupiterrise.com>")
-basic_args+=(--with-modified-by="<swpkg@jupiterrise.com>")
+basic_args+=(--with-compiledby="Luis E Limon")
+basic_args+=(--with-modified-by="Luis E Limon")
 # Do not let scripts add a dependency on perl
 ignore_deps="TGCperl"
 # We need to override this
