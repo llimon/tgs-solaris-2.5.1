@@ -101,6 +101,29 @@
     typedef uint64_t     uint_fast64_t;
     #endif
 
+    /* Limits for fixed-width integer types for 32-bit */
+    #ifndef UINT16_MAX
+    #define UINT16_MAX         65535U      /* 2**16 - 1 */
+    #endif
+    #ifndef UINT32_MAX
+    #define UINT32_MAX         4294967295U /* 2**32 - 1 */
+    #endif
+    #ifndef UINT64_MAX
+    #define UINT64_MAX         18446744073709551615ULL /* 2**64 - 1 */
+    #endif
+
+    #ifndef INT32_MAX
+    #define INT32_MAX          2147483647L /* 2**31 - 1 */
+    #endif
+
+    #ifndef INT32_MIN
+    #define INT32_MIN          (-2147483647L - 1L) /* Or -2147483648L */
+    #endif
+
+    #ifndef SIZE_MAX
+    #define SIZE_MAX           UINT32_MAX /* `size_t` is 32-bit on a 32-bit system */
+    #endif
+
 #endif 
 
 #endif /* _STDINT_H */
