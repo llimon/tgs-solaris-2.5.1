@@ -1,3 +1,15 @@
+diff -ruN a/src/Makefile b/src/Makefile
+--- a/src/Makefile	2022-04-21 15:30:15.000000000 +0000
++++ b/src/Makefile	2025-09-19 18:48:01.683457409 +0000
+@@ -3033,7 +3033,7 @@
+ 	    $(PERLLIB)/ExtUtils/typemap if_perl.xs >> $@
+ 
+ auto/osdef.h: auto/config.h osdef.sh osdef1.h.in osdef2.h.in
+-	CC="$(CC) $(OSDEF_CFLAGS)" srcdir=$(srcdir) sh $(srcdir)/osdef.sh
++	CC="$(CC) $(OSDEF_CFLAGS)" srcdir=$(srcdir) ksh $(srcdir)/osdef.sh
+ 
+ auto/os_haiku.rdef: os_haiku.rdef.in
+ 	@echo creating $@
 diff -ruN a/src/auto/configure b/src/auto/configure
 --- a/src/auto/configure	2022-04-21 15:30:15.000000000 +0000
 +++ b/src/auto/configure	2025-09-12 17:27:58.389967629 +0000
