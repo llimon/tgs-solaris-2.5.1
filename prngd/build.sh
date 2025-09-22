@@ -18,7 +18,7 @@ patch[0]=socklen_t.patch
 # Global settings
 no_configure=1
 CC=gcc
-syslibs="-lsocket -lnsl -lgcc_s -lsnprintf"
+syslibs="-L$prefix/lib -R$prefix/lib -lsocket -lnsl -lgcc_s -lsnprintf"
 cflags_os="-O2 -DSOLARIS"
 [ "$_os" = "sunos56" ] && cflags_os="-O2 -DSOLARIS26 -D__EXTENSIONS__"
 
