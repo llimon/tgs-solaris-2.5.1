@@ -7,10 +7,10 @@
 # Check the following 4 variables before running the script
 topdir=prngd
 version=0.9.29
-pkgver=1
+pkgver=2
 source[0]=$topdir-$version.tar.gz
 # If there are no patches, simply comment this
-#patch[0]=
+patch[0]=socklen_t.patch
 
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
@@ -18,7 +18,7 @@ source[0]=$topdir-$version.tar.gz
 # Global settings
 no_configure=1
 CC=gcc
-syslibs="-lsocket -lnsl"
+syslibs="-lsocket -lnsl -lgcc_s -lsnprintf"
 cflags_os="-O2 -DSOLARIS"
 [ "$_os" = "sunos56" ] && cflags_os="-O2 -DSOLARIS26 -D__EXTENSIONS__"
 
