@@ -10,7 +10,7 @@ version=0.9.29
 pkgver=2
 source[0]=$topdir-$version.tar.gz
 # If there are no patches, simply comment this
-patch[0]=socklen_t.patch
+#patch[0]=
 
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
@@ -19,7 +19,13 @@ patch[0]=socklen_t.patch
 no_configure=1
 CC=gcc
 syslibs="-L$prefix/lib -R$prefix/lib -lsocket -lnsl -lgcc_s -lsnprintf"
-cflags_os="-O2 -DSOLARIS"
+
+if [ "${gnu_os_ver}" = "2.5.1" ]; then
+  cflags_os="-O2 -Wall -DSOLARIS_251"
+else
+  cflags_os="-O2 -Wall -DSOLARIS"
+fi
+
 [ "$_os" = "sunos56" ] && cflags_os="-O2 -DSOLARIS26 -D__EXTENSIONS__"
 
 __configure="make"
