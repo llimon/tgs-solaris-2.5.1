@@ -13,7 +13,7 @@ source[0]=ftp://ftp.sunet.se/pub/gnu/non-gnu/cvs/source/stable/$version/$topdir-
 #patch[0]=
 
 # Source function library
-. ${HOME}/buildpkg/scripts/buildpkg.functions
+. ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
 export CPPFLAGS="-I$prefix/include"
