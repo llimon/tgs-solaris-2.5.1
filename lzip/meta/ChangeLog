@@ -2,3 +2,6 @@ ChangeLog
 ---------
 * Mon Apr 09 2018 Tom G. Christensen <swpkg@jupiterrise.com> - 1.20-1
 - Initial package
+
+* Sun Oct 05 2025 Luis Limon - 1.20-2
+- Portted to solaris 2.5.1

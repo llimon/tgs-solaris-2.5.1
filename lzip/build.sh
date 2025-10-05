@@ -7,17 +7,20 @@
 # Check the following 4 variables before running the script
 topdir=lzip
 version=1.20
-pkgver=1
+pkgver=2
 source[0]=http://download.savannah.gnu.org/releases/lzip/$topdir-$version.tar.gz
 # If there are no patches, simply comment this
-patch[0]=lzip-1.20-no-stdint_h.patch
+#patch[0]=lzip-1.20-no-stdint_h.patch
+patch[0]=snprintf.patch
 
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
-LDFLAGS="-L/usr/tgcware/lib -R/usr/tgcware/lib"
-configure_args+=(LDFLAGS="$LDFLAGS")
+#CXXFLAGS="-D_GLIBCXX_USE_C99 -D_GLIBCXX_USE_C99_CHECK -I/usr/tgcware/include/c++/4.1.2"
+CXXFLAGS="-I/usr/tgcware/include/c++/4.1.2"
+LDFLAGS="-L/usr/tgcware/lib -R/usr/tgcware/lib -lsnprintf -lgcc_s"
+configure_args+=(CXXFLAGS="$CXXFLAGS" LDFLAGS="$LDFLAGS")
 
 reg prep
 prep()
