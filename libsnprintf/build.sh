@@ -19,8 +19,8 @@ source[0]=https://ftp.deu.edu.tr/pub/Solaris/sunfreeware/SOURCES/${topdir}-${ver
 # Redefin package global attributes
 
 # Global settings
-export CFLAGS="-std=gnu99" 
-export LIBS="-lgcc_s"
+export CFLAGS="-std=gnu99 -I/usr/tgcware/include" 
+export LIBS="-L/usr/tgcware/lib -R/usr/tgcware/lib  -lgcc_s"
 #configure_args+=()
 
 reg prep
