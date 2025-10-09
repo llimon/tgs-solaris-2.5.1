@@ -17,7 +17,7 @@ source[0]=https://downloads.sourceforge.net/$topdir/$topdir-$version.tar.bz2
 
 # Global settings
 export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
+export LDFLAGS="-L$prefix/lib -R$prefix/lib -lgcc_s"
 configure_args+=(--enable-utf)
 
 reg prep

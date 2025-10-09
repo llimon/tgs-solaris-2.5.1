@@ -20,7 +20,7 @@ patch[3]=0004-Missing-include-for-my_strdup.patch
 
 # Global settings
 export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
+export LDFLAGS="-L$prefix/lib -R$prefix/lib -lgcc_s -lsnprintf"
 export CC="gcc -D__EXTENSIONS__"
 configure_args+=(--with-included-popt --disable-ipv6 --disable-xxhash --disable-zstd --disable-lz4)
 
