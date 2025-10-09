@@ -10,14 +10,14 @@ version=1.20.3
 pkgver=2
 source[0]=https://mirrors.kernel.org/gnu/wget/$topdir-$version.tar.lz
 # If there are no patches, simply comment this
-#patch[0]=
+patch[0]=getprogname.patch
 
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
 export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
+export LDFLAGS="-L$prefix/lib -R$prefix/lib -lgcc_s -lsnprintf"
 configure_args+=(--with-ssl=openssl --with-libssl-prefix=$prefix)
 
 reg prep
