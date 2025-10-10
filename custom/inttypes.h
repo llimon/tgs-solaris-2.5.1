@@ -11,6 +11,7 @@
 #define PRIoMAX "llo"
 
 #define PRId32 "d"
+#define PRIu32 "u" 
 #define PRIx32 "x"
 #define PRId64 "lld"
 #define PRIx64 "llx"
@@ -23,6 +24,7 @@
 #define PRIoMAX "llo"
 
 #define PRId32 "d"
+#define PRIu32 "u"
 #define PRIx32 "x"
 #define PRId64 "ld"
 #define PRIx64 "lx"
@@ -35,6 +37,7 @@
 #define PRIoMAX "llo"
 
 #define PRId32 "d"
+#define PRIu32 "u"
 #define PRIx32 "x"
 #define PRId64 "lld"
 #define PRIx64 "llx"
