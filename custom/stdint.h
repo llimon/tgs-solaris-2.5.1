@@ -64,6 +64,10 @@
     #define _UINTMAX_T
     #endif
 
+    #ifndef LONG_MIN
+    #define LONG_MIN 	(-2147483647L - 1)
+    #endif
+
 
 /* Define int_fast types.  short is often slow */
 /* some come from gcc: ./sparc-sun-solaris2.5.1/libgfortran/gstdint.h */
@@ -123,6 +127,48 @@
     #ifndef SIZE_MAX
     #define SIZE_MAX           UINT32_MAX /* `size_t` is 32-bit on a 32-bit system */
     #endif
+
+    /* constants formulated to build openssl3 
+     * include/internal/numbers.h:61:1: warning: "UINT64_MAX" redefined
+     */
+
+    // 8-bit integer limits
+    #ifndef INT8_MAX
+    # define INT8_MAX 127
+    #endif
+    #ifndef INT8_MIN
+    # define INT8_MIN (-127-1)
+    #endif
+    #ifndef UINT8_MAX
+    # define UINT8_MAX 255
+    #endif
+
+    #ifndef INT16_MAX
+    # define INT16_MAX 32767
+    #endif
+    #ifndef INT16_MIN
+    # define INT16_MIN (-32767-1)
+    #endif
+
+    #ifndef INT64_MIN
+    # define INT64_MIN (-9223372036854775807LL - 1LL)
+    #endif
+    
+    #ifndef INT64_MAX
+    # define INT64_MAX 9223372036854775807LL
+    #endif
+
+    /* constants needed by git
+    */
+    #ifndef INTMAX_MAX
+    #define INTMAX_MAX  INT64_MAX
+    #endif
+    #ifndef INTMAX_MIN
+    #define INTMAX_MIN  INT64_MIN
+    #endif
+    #ifndef UINTMAX_MAX
+    #define UINTMAX_MAX UINT64_MAX
+    #endif 
 
 #endif 
 
