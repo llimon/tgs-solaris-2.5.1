@@ -9,11 +9,13 @@
 #define PRIuPTR "lu"
 #define PRIuMAX "llu"
 #define PRIoMAX "llo"
+#define PRIdMAX "lld"
 
 #define PRId32 "d"
 #define PRIu32 "u" 
 #define PRIx32 "x"
 #define PRId64 "lld"
+#define PRIu64 "llu"
 #define PRIx64 "llx"
 
 #elif defined(__x86_64__) || defined(__aarch64__)
@@ -22,11 +24,13 @@
 #define PRIuPTR "lu"
 #define PRIuMAX "llu"
 #define PRIoMAX "llo"
+#define PRIdMAX "lld"
 
 #define PRId32 "d"
 #define PRIu32 "u"
 #define PRIx32 "x"
 #define PRId64 "ld"
+#define PRIu64 "lu"
 #define PRIx64 "lx"
 
 #else
@@ -35,13 +39,18 @@
 #define PRIuPTR "u"
 #define PRIuMAX "llu"
 #define PRIoMAX "llo"
+#define PRIdMAX "lld"
 
 #define PRId32 "d"
 #define PRIu32 "u"
 #define PRIx32 "x"
 #define PRId64 "lld"
+#define PRIu64 "llu"
 #define PRIx64 "llx"
 
 #endif
+
+// load custom strtoimax and strtoumax
+#include <strtoimax.h>
 
 #endif /* _SPARC32_INTTYPE_H */
