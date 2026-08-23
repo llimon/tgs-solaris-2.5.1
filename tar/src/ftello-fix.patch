@@ -1,100 +1,11 @@
-diff -ruN b/src/incremen.c c/src/incremen.c
---- b/src/incremen.c	2025-09-07 00:27:45.956604451 +0000
-+++ c/src/incremen.c	2025-09-07 00:27:01.247897971 +0000
-@@ -23,6 +23,10 @@
+diff -ruN a/src/incremen.c b/src/incremen.c
+--- a/src/incremen.c	2017-01-02 04:43:49.000000000 +0000
++++ b/src/incremen.c	2026-08-22 23:18:30.969287124 +0000
+@@ -22,6 +22,7 @@
+ #include <hash.h>
  #include <quotearg.h>
  #include "common.h"
++#include <compat/ftello_compat.h>
  
-+#include <stdio.h>
-+#include <unistd.h>
-+#include <sys/types.h>
-+
  /* Incremental dump specialities.  */
  
- /* Which child files to save under a directory.  */
-@@ -1105,6 +1109,41 @@
-   return c;
- }
- 
-+
-+#define _FILE_OFFSET_BITS 64 // Enable large file support
-+
-+/*
-+ * ftello_replacement()
-+ *
-+ * This function mimics ftello() by using the lower-level lseek() system call.
-+ * It returns the current file position for a given file stream.
-+ *
-+ * Arguments:
-+ *   stream - A pointer to the FILE stream.
-+ *
-+ * Returns:
-+ *   The current file position as an off_t, or -1 on error.
-+ */
-+off_t ftello_replacement(FILE *stream) {
-+    int fd;
-+    off_t current_pos;
-+
-+    // Get the file descriptor from the stream.
-+    // fileno() is used to obtain the file descriptor.
-+    fd = fileno(stream);
-+    if (fd == -1) {
-+        // fileno() failed.
-+        return (off_t)-1;
-+    }
-+
-+    // Use lseek() with SEEK_CUR and an offset of 0 to get the current position.
-+    // With _FILE_OFFSET_BITS=64, this automatically becomes a 64-bit operation.
-+    current_pos = lseek(fd, 0, SEEK_CUR);
-+
-+    return current_pos;
-+}
-+
-+
- /* Read from file FP a null-terminated string and convert it to an
-    integer.  FIELDNAME is the intended use of the integer, useful for
-    diagnostics.  MIN_VAL and MAX_VAL are its minimum and maximum
-@@ -1136,7 +1175,7 @@
- 	FATAL_ERROR ((0, 0,
- 		      _("%s: byte %s: %s %.*s... too long"),
- 		      quotearg_colon (listed_incremental_option),
--		      offtostr (ftello (fp), offbuf),
-+		      offtostr (ftello_replacement (fp), offbuf),
- 		      fieldname, i + 1, buf));
-       c = getc (fp);
-     }
-@@ -1160,7 +1199,7 @@
-       FATAL_ERROR ((0, 0,
- 		    _("%s: byte %s: %s %s followed by invalid byte 0x%02x"),
- 		    quotearg_colon (listed_incremental_option),
--		    offtostr (ftello (fp), offbuf),
-+		    offtostr (ftello_replacement (fp), offbuf),
- 		    fieldname, buf, uc));
-     }
- 
-@@ -1173,14 +1212,14 @@
-       FATAL_ERROR ((0, conversion_errno,
- 		    _("%s: byte %s: (valid range %s..%s)\n\t%s %s"),
- 		    quotearg_colon (listed_incremental_option),
--		    offtostr (ftello (fp), offbuf),
-+		    offtostr (ftello_replacement (fp), offbuf),
- 		    imaxtostr (min_val, minbuf),
- 		    umaxtostr (max_val, maxbuf), fieldname, buf));
-     default:
-       FATAL_ERROR ((0, conversion_errno,
- 		    _("%s: byte %s: %s %s"),
- 		    quotearg_colon (listed_incremental_option),
--		    offtostr (ftello (fp), offbuf), fieldname, buf));
-+		    offtostr (ftello_replacement (fp), offbuf), fieldname, buf));
-     case 0:
-       break;
-     }
-@@ -1261,7 +1300,7 @@
-       if (getc (listed_incremental_stream) != 0)
- 	FATAL_ERROR ((0, 0, _("%s: byte %s: %s"),
- 		      quotearg_colon (listed_incremental_option),
--		      offtostr (ftello (listed_incremental_stream), offbuf),
-+		      offtostr (ftello_replacement (listed_incremental_stream), offbuf),
- 		      _("Missing record terminator")));
- 
-       content = obstack_finish (&stk);

@@ -22,7 +22,7 @@ export CFLAGS="-D_FILE_OFFSET_BITS=64"
 export LDFLAGS="-L$prefix/lib -R$prefix/lib"
 
 # solaris 2.5.1 does not have ftello
-configure_args+=(--disable-largefile)
+#configure_args+=(--disable-largefile)
 
 gnu_link tar
 
