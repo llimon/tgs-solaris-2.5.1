@@ -26,4 +26,13 @@ typedef int socklen_t;
 #endif
 #endif
 
+/* Solaris 2.5.1 in_addr_t fallback */
+#ifndef IN_ADDR_T
+#ifndef _IN_ADDR_T
+typedef unsigned long in_addr_t;
+#define IN_ADDR_T
+#define _IN_ADDR_T
+#endif
+#endif
+
 #endif /* COMPAT_SOCKET_COMPAT_H */

@@ -6,6 +6,7 @@
 #include <string.h>
 #include <netdb.h>
 #include <sys/types.h>
+#include <stdint.h>
 #include <sys/socket.h>
 #include <compat/socket_compat.h>
 #include <netinet/in.h>
@@ -89,6 +90,13 @@ static inline char *gai_strerror(int ecode) {
 }
 
 /* Multi-IP DNS Pool-Capable getaddrinfo */
+#ifndef IPPROTO_UDP
+#define IPPROTO_UDP 17
+#endif
+#ifndef IPPROTO_TCP
+#define IPPROTO_TCP 6
+#endif
+
 static inline int getaddrinfo(const char *nodename, const char *servname,
                               const struct addrinfo *hints,
                               struct addrinfo **res) {
@@ -113,17 +121,12 @@ static inline int getaddrinfo(const char *nodename, const char *servname,
         if (family != AF_UNSPEC && family != AF_INET)
             return (EAI_FAMILY);
 
-        switch (socktype) {
-            case 0:
-                break;
-            case SOCK_STREAM:
-                proto = "tcp";
-                break;
-            case SOCK_DGRAM:
-                proto = "udp";
-                break;
-            default:
-                return (EAI_SOCKTYPE);
+        if (socktype == SOCK_DGRAM) {
+            proto = "udp";
+            if (protocol == 0) protocol = IPPROTO_UDP;
+        } else if (socktype == SOCK_STREAM) {
+            proto = "tcp";
+            if (protocol == 0) protocol = IPPROTO_TCP;
         }
     }
 
@@ -137,64 +140,133 @@ static inline int getaddrinfo(const char *nodename, const char *servname,
             port = htons((unsigned short)tmp_port);
         } else {
             sp = getservbyname(servname, proto);
+            if (sp == NULL && proto != NULL) {
+                sp = getservbyname(servname, NULL);
+            }
+
             if (sp != NULL) {
                 port = sp->s_port;
                 if (socktype == 0) {
-                    if (strcmp(sp->s_proto, "tcp") == 0) socktype = SOCK_STREAM;
-                    else if (strcmp(sp->s_proto, "udp") == 0) socktype = SOCK_DGRAM;
+                    if (strcmp(sp->s_proto, "tcp") == 0) {
+                        socktype = SOCK_STREAM;
+                        protocol = IPPROTO_TCP;
+                    } else if (strcmp(sp->s_proto, "udp") == 0) {
+                        socktype = SOCK_DGRAM;
+                        protocol = IPPROTO_UDP;
+                    }
                 }
             } else if (strcmp(servname, "ntp") == 0) {
-                /* Fallback if /etc/services lacks "ntp" entry */
                 port = htons(123);
                 if (socktype == 0) socktype = SOCK_DGRAM;
+                if (protocol == 0) protocol = IPPROTO_UDP;
             } else {
                 return (EAI_SERVICE);
             }
         }
     }
 
+    /* Fallbacks if unspecified */
+    if (socktype == 0) socktype = SOCK_DGRAM;
+    if (protocol == 0) protocol = IPPROTO_UDP;
+
     if (nodename != NULL) {
-        he = gethostbyname(nodename);
-        if (he == NULL || he->h_addrtype != AF_INET)
-            return (EAI_NONAME);
+        struct in_addr in;
+        unsigned long ip_val = (unsigned long)inet_addr(nodename);
 
-        /* Default NTP / UDP socktype if not specified */
-        if (socktype == 0) socktype = SOCK_DGRAM;
+        /* 1. Direct numeric IPv4 address check (e.g. "192.168.1.1") */
+        if (ip_val != 0xFFFFFFFFUL || strcmp(nodename, "255.255.255.255") == 0) {
+            in.s_addr = (uint32_t)ip_val;
 
-        /* Build full linked list for all returned DNS pool records */
-        while (he->h_addr_list[i] != NULL) {
             curr = (struct addrinfo *)calloc(1, sizeof(struct addrinfo));
             sa_in = (struct sockaddr_in *)calloc(1, sizeof(struct sockaddr_in));
 
             if (!curr || !sa_in) {
                 if (curr) free(curr);
                 if (sa_in) free(sa_in);
-                freeaddrinfo(head);
                 return (EAI_MEMORY);
             }
 
             sa_in->sin_family = AF_INET;
             sa_in->sin_port = (unsigned short)port;
-            memcpy(&sa_in->sin_addr, he->h_addr_list[i], he->h_length);
+            sa_in->sin_addr = in;
 
             curr->ai_flags = flags;
             curr->ai_family = AF_INET;
             curr->ai_socktype = socktype;
-            curr->ai_protocol = (protocol != 0) ? protocol : IPPROTO_UDP;
+            curr->ai_protocol = protocol;
             curr->ai_addrlen = sizeof(struct sockaddr_in);
             curr->ai_addr = (struct sockaddr *)sa_in;
             curr->ai_next = NULL;
 
-            if (he->h_name) {
-                curr->ai_canonname = strdup(he->h_name);
+            if (flags & AI_CANONNAME) {
+                curr->ai_canonname = strdup(nodename);
             }
 
-            if (!head) head = curr;
-            else prev->ai_next = curr;
+            head = curr;
+        } else {
+            /* 2. DNS Hostname lookup (e.g. "0.pool.ntp.org") */
+            he = gethostbyname(nodename);
+            if (he == NULL || he->h_addrtype != AF_INET)
+                return (EAI_NONAME);
 
-            prev = curr;
-            i++;
+            while (he->h_addr_list[i] != NULL) {
+                curr = (struct addrinfo *)calloc(1, sizeof(struct addrinfo));
+                sa_in = (struct sockaddr_in *)calloc(1, sizeof(struct sockaddr_in));
+
+                if (!curr || !sa_in) {
+                    if (curr) free(curr);
+                    if (sa_in) free(sa_in);
+                    freeaddrinfo(head);
+                    return (EAI_MEMORY);
+                }
+
+                sa_in->sin_family = AF_INET;
+                sa_in->sin_port = (unsigned short)port;
+                memcpy(&sa_in->sin_addr, he->h_addr_list[i], he->h_length);
+
+                curr->ai_flags = flags;
+                curr->ai_family = AF_INET;
+                curr->ai_socktype = socktype;
+                curr->ai_protocol = protocol;
+                curr->ai_addrlen = sizeof(struct sockaddr_in);
+                curr->ai_addr = (struct sockaddr *)sa_in;
+                curr->ai_next = NULL;
+
+                if ((flags & AI_CANONNAME) && he->h_name) {
+                    curr->ai_canonname = strdup(he->h_name);
+                }
+
+                if (!head) head = curr;
+                else prev->ai_next = curr;
+
+                prev = curr;
+                i++;
+            }
         }
+    } else {
+        /* 3. Wildcard bind (nodename is NULL) */
+        curr = (struct addrinfo *)calloc(1, sizeof(struct addrinfo));
+        sa_in = (struct sockaddr_in *)calloc(1, sizeof(struct sockaddr_in));
+
+        if (!curr || !sa_in) {
+            if (curr) free(curr);
+            if (sa_in) free(sa_in);
+            return (EAI_MEMORY);
+        }
+
+        sa_in->sin_family = AF_INET;
+        sa_in->sin_port = (unsigned short)port;
+        sa_in->sin_addr.s_addr = (flags & AI_PASSIVE) ? INADDR_ANY : htonl(INADDR_LOOPBACK);
+
+        curr->ai_flags = flags;
+        curr->ai_family = AF_INET;
+        curr->ai_socktype = socktype;
+        curr->ai_protocol = protocol;
+        curr->ai_addrlen = sizeof(struct sockaddr_in);
+        curr->ai_addr = (struct sockaddr *)sa_in;
+        curr->ai_next = NULL;
+
+        head = curr;
     }
 
     if (head == NULL)
@@ -232,16 +304,18 @@ static inline int getnameinfo(const struct sockaddr *sa, socklen_t salen,
 
 /* =========================================================================
  * Unit Test Suite
- * Compile with: gcc -DTEST_DNS_RFC2553 -I/usr/tgcware/include -o test_dns_rfc2553 /usr/tgcware/include/compat/dns_rfc2553_compat.h
+ * Compile with: gcc -D_TEST_DNS_RFC2553_COMPAT -I/usr/tgcware/include -o test_dns /usr/tgcware/include/compat/dns_rfc2553_compat.h
  * ========================================================================= */
 #ifdef _TEST_DNS_RFC2553_COMPAT
 int main(int argc, char **argv) {
     const char *target = (argc > 1) ? argv[1] : "0.pool.ntp.org";
     const char *service = (argc > 2) ? argv[2] : "123";
     struct addrinfo hints, *res = NULL, *p = NULL;
-    int rc, count = 0;
+    int rc, count = 0, errors = 0;
 
     printf("[TEST] Testing dns_rfc2553_compat on Solaris 2.5.1...\n");
+    printf("[TEST] System Constants: SOCK_STREAM=%d | SOCK_DGRAM=%d | AF_INET=%d\n",
+           SOCK_STREAM, SOCK_DGRAM, AF_INET);
     printf("[TEST] Target: %s | Service: %s\n\n", target, service);
 
     memset(&hints, 0, sizeof(hints));
@@ -268,25 +342,45 @@ int main(int argc, char **argv) {
             struct sockaddr_in *sin = (struct sockaddr_in *)p->ai_addr;
             char *ip_str = inet_ntoa(sin->sin_addr);
             int port = ntohs(sin->sin_port);
+            const char *st_str = (p->ai_socktype == SOCK_DGRAM) ? "SOCK_DGRAM" :
+                                 (p->ai_socktype == SOCK_STREAM) ? "SOCK_STREAM" : "INVALID";
 
             printf("  Node %d:\n", count);
             printf("    IP Address: %s\n", ip_str ? ip_str : "UNKNOWN");
             printf("    Port:       %d\n", port);
             printf("    Family:     AF_INET (%d)\n", p->ai_family);
-            printf("    SockType:   %s (%d)\n", 
-                   (p->ai_socktype == SOCK_DGRAM) ? "SOCK_DGRAM" : 
-                   (p->ai_socktype == SOCK_STREAM) ? "SOCK_STREAM" : "OTHER", 
-                   p->ai_socktype);
-            printf("    CanonName:  %s\n\n", p->ai_canonname ? p->ai_canonname : "(none)");
+            printf("    SockType:   %s (%d)\n", st_str, p->ai_socktype);
+            printf("    CanonName:  %s\n", p->ai_canonname ? p->ai_canonname : "(none)");
+
+            /* Validation Assertions */
+            if (p->ai_socktype != SOCK_DGRAM) {
+                fprintf(stderr, "    [ERROR] Node %d: SockType mismatch! Expected SOCK_DGRAM (%d), got %d\n",
+                        count, SOCK_DGRAM, p->ai_socktype);
+                errors++;
+            }
+            if (p->ai_family != AF_INET) {
+                fprintf(stderr, "    [ERROR] Node %d: Family mismatch! Expected AF_INET (%d), got %d\n",
+                        count, AF_INET, p->ai_family);
+                errors++;
+            }
+            if (port == 0) {
+                fprintf(stderr, "    [ERROR] Node %d: Port is 0! Expected valid port for service '%s'\n",
+                        count, service);
+                errors++;
+            }
+            printf("\n");
+        } else {
+            fprintf(stderr, "    [ERROR] Node %d: Corrupted or non-AF_INET address structure!\n", count);
+            errors++;
         }
     }
 
     printf("--------------------------------------------------\n");
-    printf("[SUMMARY] Successfully resolved and chained %d IP address(es).\n", count);
+    printf("[SUMMARY] Resolved and chained %d IP address(es) with %d error(s).\n", count, errors);
 
     freeaddrinfo(res);
     printf("[OK] freeaddrinfo() executed without heap corruption.\n");
 
-    return 0;
+    return (errors > 0) ? 1 : 0;
 }
-#endif /* TEST_DNS_RFC2553 */
+#endif /* _TEST_DNS_RFC2553_COMPAT */
