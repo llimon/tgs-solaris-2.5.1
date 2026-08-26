@@ -15,12 +15,14 @@
 #define AF_INET 2
 #endif
 
-/* 2. Clear potential system macros to avoid header mangling */
+/* 2. Clear potential system/app macros to avoid header mangling */
 #undef getaddrinfo
 #undef freeaddrinfo
 #undef addrinfo
 
-/* 3. Unique struct definition to avoid header redefinition errors */
+/* 3. Unique struct definition with type guard to avoid redefinitions */
+#ifndef COMPAT_ADDRINFO_DEFINED
+#define COMPAT_ADDRINFO_DEFINED
 struct compat_addrinfo {
     int                     ai_flags;
     int                     ai_family;
@@ -31,6 +33,7 @@ struct compat_addrinfo {
     struct sockaddr        *ai_addr;
     struct compat_addrinfo *ai_next;
 };
+#endif /* COMPAT_ADDRINFO_DEFINED */
 
 static inline void freeaddrinfo_compat(struct compat_addrinfo *res) {
     struct compat_addrinfo *p, *next;
@@ -43,7 +46,7 @@ static inline void freeaddrinfo_compat(struct compat_addrinfo *res) {
 }
 
 static inline int getaddrinfo_compat(const char *nodename, const char *servname,
-                                    const struct compat_addrinfo *hints, 
+                                    const struct compat_addrinfo *hints,
                                     struct compat_addrinfo **res) {
     struct hostent *he;
     struct compat_addrinfo *head = NULL, *prev = NULL, *curr = NULL;
@@ -152,4 +155,3 @@ int main(int argc, char **argv) {
     return 1;
 }
 #endif /* _TEST_GETADDRINFO_COMPAT */
-
