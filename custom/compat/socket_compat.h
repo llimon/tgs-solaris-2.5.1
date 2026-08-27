@@ -35,4 +35,13 @@ typedef unsigned long in_addr_t;
 #endif
 #endif
 
+/* Solaris 2.5.1 INET_ADDRSTRLEN fallback */
+#ifndef INET_ADDRSTRLEN
+#define INET_ADDRSTRLEN 16
+#endif
+
+#ifndef INET6_ADDRSTRLEN
+#define INET6_ADDRSTRLEN 46
+#endif
+
 #endif /* COMPAT_SOCKET_COMPAT_H */
