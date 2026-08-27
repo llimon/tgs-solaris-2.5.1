@@ -1,0 +1,54 @@
+diff -ruN a/config.mak.uname b/config.mak.uname
+--- a/config.mak.uname	2023-04-24 08:42:25.000000000 -0700
++++ b/config.mak.uname	2026-08-27 01:24:57.811903210 -0700
+@@ -175,14 +175,19 @@
+ 	SHELL_PATH = /bin/bash
+ 	SANE_TOOL_PATH = /usr/xpg6/bin:/usr/xpg4/bin
+ 	HAVE_ALLOCA_H = YesPlease
++	HAVE_STRINGS_H = YesPlease
+ 	NO_STRCASESTR = YesPlease
+ 	NO_MEMMEM = YesPlease
+ 	NO_MKDTEMP = YesPlease
+ 	NO_REGEX = YesPlease
+ 	NO_MSGFMT_EXTENDED_OPTIONS = YesPlease
+ 	HAVE_DEV_TTY = YesPlease
+-	ifeq ($(uname_R),5.6)
++	CC_LD_DYNPATH = -R
++	ifneq (,$(filter 5.5.1 5.6,$(uname_R)))
+ 		SOCKLEN_T = int
++		FREAD_READS_DIRECTORIES = UnfortunatelyYes
++		SNPRINTF_RETURNS_BOGUS = YesPlease
++		NEEDS_RESOLV = YesPlease
+ 		NO_HSTRERROR = YesPlease
+ 		NO_IPV6 = YesPlease
+ 		NO_SOCKADDR_STORAGE = YesPlease
+@@ -190,9 +195,12 @@
+ 		NO_SETENV = YesPlease
+ 		NO_STRLCPY = YesPlease
+ 		NO_STRTOUMAX = YesPlease
++		NO_PTHREADS = YesPlease
+ 		GIT_TEST_CMP = cmp
+ 	endif
+ 	ifeq ($(uname_R),5.7)
++		FREAD_READS_DIRECTORIES = UnfortunatelyYes
++		SNPRINTF_RETURNS_BOGUS = YesPlease
+ 		NEEDS_RESOLV = YesPlease
+ 		NO_IPV6 = YesPlease
+ 		NO_SOCKADDR_STORAGE = YesPlease
+@@ -203,12 +211,16 @@
+ 		GIT_TEST_CMP = cmp
+ 	endif
+ 	ifeq ($(uname_R),5.8)
++		FREAD_READS_DIRECTORIES = UnfortunatelyYes
++		SNPRINTF_RETURNS_BOGUS = YesPlease
+ 		NO_UNSETENV = YesPlease
+ 		NO_SETENV = YesPlease
+ 		NO_STRTOUMAX = YesPlease
+ 		GIT_TEST_CMP = cmp
+ 	endif
+ 	ifeq ($(uname_R),5.9)
++		FREAD_READS_DIRECTORIES = UnfortunatelyYes
++		SNPRINTF_RETURNS_BOGUS = YesPlease
+ 		NO_UNSETENV = YesPlease
+ 		NO_SETENV = YesPlease
+ 		NO_STRTOUMAX = YesPlease
