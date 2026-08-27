@@ -16,30 +16,34 @@ source[0]=https://ftp.deu.edu.tr/pub/Solaris/sunfreeware/SOURCES/${topdir}-${ver
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
-# Redefin package global attributes
-
+# -mcpu=v7
 # Global settings
-export CFLAGS="-std=gnu99 -I/usr/tgcware/include" 
-export LIBS="-L/usr/tgcware/lib -R/usr/tgcware/lib  -lgcc_s"
+export CFLAGS="-std=gnu99 -I$prefix/include -mcpu=v7"
+
+# Fix: Ensure -lgcc_s and runtime search paths are passed to LDFLAGS 
+# so libsnprintf.so gets built with an explicit DT_NEEDED tag for libgcc_s
+export LDFLAGS="-L$prefix/lib -R$prefix/lib -lgcc_s"
+export LIBS="-L$prefix/lib -R$prefix/lib -lgcc_s"
+
 #configure_args+=()
 
 reg prep
 prep()
-{	
-	 #get_files
+{
+         #get_files
     generic_prep
 }
 
 reg build
 build()
 {
-    generic_build
+        generic_build
 }
 
 reg check
 check()
 {
-    generic_check
+        generic_check
 }
 
 reg install
