@@ -3,23 +3,30 @@
 
 #include <stdint.h>
 #include <sys/types.h>
+
 #if defined(__sun__) && defined(__sparc__)
-// For 32-bit SPARC, like Sun-4m/Solaris 2.5.1
+/* 32-bit SPARC (Sun-4m / Solaris 2.5.1 ABI) */
 #define PRIdPTR "ld"
 #define PRIuPTR "lu"
 #define PRIuMAX "llu"
 #define PRIoMAX "llo"
 #define PRIdMAX "lld"
+#define PRIxMAX "llx"
+#define PRIXMAX "llX"
 
 #define PRId32 "d"
-#define PRIu32 "u" 
+#define PRIu32 "u"
 #define PRIx32 "x"
 #define PRId64 "lld"
 #define PRIu64 "llu"
 #define PRIx64 "llx"
 
+#define SCNuMAX "llu"
+#define SCNdMAX "lld"
+#define SCNxMAX "llx"
+
 #elif defined(__x86_64__) || defined(__aarch64__)
-// For 64-bit systems
+/* 64-bit systems */
 #define PRIdPTR "ld"
 #define PRIuPTR "lu"
 #define PRIuMAX "llu"
@@ -33,8 +40,12 @@
 #define PRIu64 "lu"
 #define PRIx64 "lx"
 
+#define SCNuMAX "llu"
+#define SCNdMAX "lld"
+#define SCNxMAX "llx"
+
 #else
-// Default for older 32-bit systems
+/* Standard 32-bit Fallback */
 #define PRIdPTR "d"
 #define PRIuPTR "u"
 #define PRIuMAX "llu"
@@ -48,9 +59,13 @@
 #define PRIu64 "llu"
 #define PRIx64 "llx"
 
+#define SCNuMAX "llu"
+#define SCNdMAX "lld"
+#define SCNxMAX "llx"
+
 #endif
 
-// load custom strtoimax and strtoumax
-#include <strtoimax.h>
+/* Load compatibility helpers from /usr/tgcware/include/compat/ */
+#include <compat/strtoimax_compat.h>
 
 #endif /* _SPARC32_INTTYPE_H */
