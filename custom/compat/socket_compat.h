@@ -18,11 +18,13 @@
 #endif
 
 /* Solaris 2.5.1 socklen_t fallback */
+#ifndef socklen_t
 #ifndef SOCKLEN_T
 #ifndef _SOCKLEN_T
 typedef int socklen_t;
 #define SOCKLEN_T
 #define _SOCKLEN_T
+#endif
 #endif
 #endif
 
