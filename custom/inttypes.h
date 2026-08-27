@@ -21,9 +21,17 @@
 #define PRIu64 "llu"
 #define PRIx64 "llx"
 
+#ifndef SCNuMAX
 #define SCNuMAX "llu"
+#endif
+
+#ifndef SCNdMAX
 #define SCNdMAX "lld"
+#endif
+
+#ifndef SCNxMAX
 #define SCNxMAX "llx"
+#endif
 
 #elif defined(__x86_64__) || defined(__aarch64__)
 /* 64-bit systems */
