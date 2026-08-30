@@ -1,7 +1,7 @@
 diff -ruN a/config.mak.uname b/config.mak.uname
---- a/config.mak.uname	2023-04-24 08:42:25.000000000 -0700
-+++ b/config.mak.uname	2026-08-27 01:24:57.811903210 -0700
-@@ -175,14 +175,19 @@
+--- a/config.mak.uname	2023-04-24 08:42:25.000000000 +0000
++++ b/config.mak.uname	2026-08-28 15:55:55.557084025 +0000
+@@ -175,24 +175,35 @@
  	SHELL_PATH = /bin/bash
  	SANE_TOOL_PATH = /usr/xpg6/bin:/usr/xpg4/bin
  	HAVE_ALLOCA_H = YesPlease
@@ -17,25 +17,29 @@ diff -ruN a/config.mak.uname b/config.mak.uname
 +	ifneq (,$(filter 5.5.1 5.6,$(uname_R)))
  		SOCKLEN_T = int
 +		FREAD_READS_DIRECTORIES = UnfortunatelyYes
-+		SNPRINTF_RETURNS_BOGUS = YesPlease
 +		NEEDS_RESOLV = YesPlease
  		NO_HSTRERROR = YesPlease
  		NO_IPV6 = YesPlease
  		NO_SOCKADDR_STORAGE = YesPlease
-@@ -190,9 +195,12 @@
+ 		NO_UNSETENV = YesPlease
  		NO_SETENV = YesPlease
  		NO_STRLCPY = YesPlease
- 		NO_STRTOUMAX = YesPlease
+-		NO_STRTOUMAX = YesPlease
++		#NO_STRTOUMAX = YesPlease
 +		NO_PTHREADS = YesPlease
  		GIT_TEST_CMP = cmp
  	endif
++	ifeq ($(uname_R),5.6)
++		SNPRINTF_RETURNS_BOGUS = YesPlease
++	endif
++
  	ifeq ($(uname_R),5.7)
 +		FREAD_READS_DIRECTORIES = UnfortunatelyYes
 +		SNPRINTF_RETURNS_BOGUS = YesPlease
  		NEEDS_RESOLV = YesPlease
  		NO_IPV6 = YesPlease
  		NO_SOCKADDR_STORAGE = YesPlease
-@@ -203,12 +211,16 @@
+@@ -203,12 +214,16 @@
  		GIT_TEST_CMP = cmp
  	endif
  	ifeq ($(uname_R),5.8)
@@ -52,3 +56,36 @@ diff -ruN a/config.mak.uname b/config.mak.uname
  		NO_UNSETENV = YesPlease
  		NO_SETENV = YesPlease
  		NO_STRTOUMAX = YesPlease
+diff -ruN a/http.c b/http.c
+--- a/http.c	2023-04-24 08:42:25.000000000 +0000
++++ b/http.c	2026-08-27 19:25:42.113706552 +0000
+@@ -1970,16 +1970,19 @@
+ 		strbuf_reset(result);
+ 		break;
+ 	case HTTP_REQUEST_FILE:
+-		if (fflush(result)) {
+-			error_errno("unable to flush a file");
+-			return HTTP_START_FAILED;
+-		}
+-		rewind(result);
+-		if (ftruncate(fileno(result), 0) < 0) {
+-			error_errno("unable to truncate a file");
+-			return HTTP_START_FAILED;
+-		}
+-		break;
++      {
++         FILE *fp = (FILE *)result;
++         if (fflush(fp)) {
++            error_errno("unable to flush a file");
++            return HTTP_START_FAILED;
++         }
++         rewind(fp);
++         if (ftruncate(fileno(fp), 0) < 0) {
++            error_errno("unable to truncate a file");
++            return HTTP_START_FAILED;
++         }
++      }
++      break;
+ 	default:
+ 		BUG("Unknown http_request target");
+ 	}

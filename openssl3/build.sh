@@ -7,15 +7,15 @@
 # Check the following 4 variables before running the script
 topdir=openssl
 version=3.0.15
-pkgver=1
+pkgver=2
 source[0]=https://github.com/openssl/openssl/releases/download/${topdir}-${version}/${topdir}-${version}.tar.gz
 # If there are no patches, simply comment this
-patch[0]=0001-Fix-fallback-for-missing-getaddrinfo.patch
-patch[1]=0002-Include-sys-atomic.h-directly-on-Solaris.patch
-patch[2]=0003-Provide-socklen_t-on-Solaris-2.6.patch
-patch[3]=0005-Handle-missing-stdint.h-on-older-Solaris.patch
-patch[4]=0006-Handle-missing-strtoumax.patch
-patch[5]=0007-Use-target-CPU-choice-on-SPARC.patch
+#patch[0]=0001-Fix-fallback-for-missing-getaddrinfo.patch
+patch[0]=0002-Include-sys-atomic.h-directly-on-Solaris.patch
+#patch[1]=0003-Provide-socklen_t-on-Solaris-2.6.patch
+#patch[3]=0005-Handle-missing-stdint.h-on-older-Solaris.patch
+#patch[4]=0006-Handle-missing-strtoumax.patch
+patch[3]=0007-Use-target-CPU-choice-on-SPARC.patch
 
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
@@ -26,14 +26,38 @@ patch[5]=0007-Use-target-CPU-choice-on-SPARC.patch
 # Global settings
 make_check_target="test"
 __configure="./Configure"
-configure_args=(--prefix=$prefix --openssldir=${prefix}/${_sharedir}/ssl --with-rand-seed=devrandom,egd zlib shared enable-egd)
+
+# Define compatibility headers and enforce -O2
+compat_cflags="-O2 -I$prefix/include \
+-include $prefix/include/compat/strtoimax_compat.h \
+-include $prefix/include/compat/dns_rfc2553_compat.h \
+-include $prefix/include/compat/socket_compat.h \
+-include $prefix/include/compat/snprintf_compat.h \
+-include $prefix/include/compat/dlfcn_compat.h"
+# no-asm
+configure_args=(
+    --prefix=$prefix 
+    --openssldir=${prefix}/${_sharedir}/ssl 
+    --with-rand-seed=devrandom,egd 
+    zlib 
+    shared 
+    enable-egd 
+    no-threads
+    no-asm
+    
+    # 1. Environment overrides MUST be explicitly named key-values
+    CFLAGS="$compat_cflags"
+    CPPFLAGS="$compat_cflags"
+    LDFLAGS="-L$prefix/lib -R$prefix/lib -lposix4 -lsnprintf -lgcc_s"
+)
+
+# 2. Target architecture MUST be appended AT THE VERY END
 if [ "$arch" = "sparc" ]; then
     configure_args+=(solaris-sparc${gcc_arch}-gcc)
 else
     configure_args+=(386 solaris-x86-gcc)
-    configure_args+=(CFLAGS="-march=${gcc_arch}")
 fi
-configure_args+=(LDFLAGS="-L$prefix/lib -R$prefix/lib -lposix4")
+
 cpus_online=$(psrinfo | nawk '/on-line/ {count++} END { print count }')
 
 reg prep
