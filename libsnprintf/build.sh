@@ -16,9 +16,9 @@ source[0]=https://ftp.deu.edu.tr/pub/Solaris/sunfreeware/SOURCES/${topdir}-${ver
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
-# -mcpu=v7
 # Global settings
-export CFLAGS="-std=gnu99 -I$prefix/include -mcpu=v7"
+export COMPATIBILITY="-DSNPRINTF_LONGLONG_SUPPORT -DSOLARIS_COMPATIBLE -DSOLARIS_BUG_COMPATIBLE"
+export CFLAGS="-std=gnu99 -I$prefix/include -mcpu=v7 $COMPATIBILITY"
 
 # Fix: Ensure -lgcc_s and runtime search paths are passed to LDFLAGS 
 # so libsnprintf.so gets built with an explicit DT_NEEDED tag for libgcc_s
@@ -49,8 +49,24 @@ check()
 reg install
 install()
 {
-    DESTDIR=${stagedir}
+    clean stage
+    setdir source
+    
+    # 1. Run the default install into the staging directory
+    ${__make} DESTDIR=${stagedir} install
+
+    # 2. Create the compat directory inside the staged include folder
+    ${__mkdir} -p ${stagedir}${prefix}/include/compat
+
+    # 3. Move the header into the compat folder
+    # (Renaming it to snprintf_compat.h to perfectly match your Git config.mak)
+    ${__mv} ${stagedir}${prefix}/include/snprintf.h ${stagedir}${prefix}/include/compat/snprintf_compat.h
+
+    # 4. Tell the framework we already ran 'make install' and to just package it
+    custom_install=1
     generic_install DESTDIR
+    
+    # 5. Install the documentation
     doc ChangeLog NEWS README INSTALL LICENSE.txt
 }
 

@@ -11,18 +11,15 @@ pkgver=1
 source[0]=https://www.kernel.org/pub/software/scm/git/$topdir-$version.tar.gz
 source[1]=https://www.kernel.org/pub/software/scm/git/$topdir-manpages-$version.tar.gz
 # If there are no patches, simply comment this
+source[0]=https://www.kernel.org/pub/software/scm/git/$topdir-$version.tar.gz
+source[1]=https://www.kernel.org/pub/software/scm/git/$topdir-manpages-$version.tar.gz
+# LSEgit Active Patch Series (Git 2.36.6 on Solaris 2.5.1)
 patch[0]=0001-Ensure-INET_ADDRSTRLEN-is-defined.patch
 patch[1]=0002-Ensure-SCNuMAX-is-defined.patch
-patch[2]=0003-Update-common-Solaris-settings.patch
-patch[3]=0004-Use-largefile-environment-on-Solaris.patch
-patch[4]=0005-Update-settings-for-Solaris.patch
-patch[5]=0006-No-pthread-support-for-Solaris-2.6.patch
-patch[6]=0007-Solaris-2.6-needs-libresolv.patch
-patch[7]=0008-Use-better-shell-in-t5545.patch
-patch[8]=0009-Use-better-shell-in-t5801-helper.patch
-patch[9]=0010-Avoid-stdint.h.patch
-patch[10]=0011-Workaround-for-fileno-being-a-macro.patch
-patch[11]=0012-UTC-is-GMT-on-Solaris-8.patch
+patch[2]=0003-Solaris-2.5.1-through-5.9-compatibility.patch
+#patch[3]=0004-Use-largefile-environment-on-Solaris.patch
+patch[4]=0008-Use-better-shell-in-t5545.patch
+patch[4]=0009-Use-better-shell-in-t5801-helper.patch
 
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
@@ -50,13 +47,24 @@ prep()
 V=1
 prefix=$prefix
 CC=gcc
+ifeq (\$(uname_R),5.5.1)
+  BASIC_CFLAGS += -include $prefix/include/compat/map_compat.h
+  BASIC_CFLAGS += -include $prefix/include/compat/ftello_compat.h
+  BASIC_CFLAGS += -include $prefix/include/compat/socket_compat.h
+  BASIC_CFLAGS += -include $prefix/include/compat/dns_rfc2553_compat.h
+  BASIC_CFLAGS += -include $prefix/include/compat/snprintf_compat.h
+endif
 SHELL=$prefix/bin/bash
 PERL_PATH=$prefix/bin/perl
 SHELL_PATH=$prefix/bin/bash
 SANE_TOOL_PATH=/usr/tgcware/gnu:/usr/xpg6/bin:/usr/xpg4/bin
-BASIC_CFLAGS+=-std=gnu99
+BASIC_CFLAGS+=-std=gnu99 -mcpu=v7
 BASIC_CFLAGS+=-I$prefix/include
 BASIC_LDFLAGS+=-L$prefix/lib -R$prefix/lib
+
+# Appending to EXTLIBS guarantees these link AFTER libgit.a / object files
+EXTLIBS +=-lsnprintf -lgen -lgcc_s -lpthread
+
 INSTALL=/usr/tgcware/bin/ginstall
 TAR=/usr/tgcware/bin/gtar
 USE_LIBPCRE=YesPlease
