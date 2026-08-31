@@ -63,7 +63,7 @@ BASIC_CFLAGS+=-I$prefix/include
 BASIC_LDFLAGS+=-L$prefix/lib -R$prefix/lib
 
 # Appending to EXTLIBS guarantees these link AFTER libgit.a / object files
-EXTLIBS +=-lsnprintf -lgen -lgcc_s -lpthread
+EXTLIBS +=$prefix/lib/libsnprintf.a -lgen -lpthread -lgcc_s
 
 INSTALL=/usr/tgcware/bin/ginstall
 TAR=/usr/tgcware/bin/gtar
