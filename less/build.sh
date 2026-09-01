@@ -16,9 +16,7 @@ source[0]=http://www.greenwoodsoftware.com/less/$topdir-$version.tar.gz
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
-export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
-export LIBS="-lw"
+export LIBS="$LIBS -lw"
 configure_args+=(--with-editor=/bin/vi)
 
 reg prep
