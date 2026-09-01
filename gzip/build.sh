@@ -17,7 +17,7 @@ source[0]=ftp://ftp.sunet.se/pub/gnu/gzip/$topdir-$version.tar.xz
 
 # Global settings
 export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
+export LIBS="-lposix4 $prefix/lib/libsnprintf.a"
 ac_overrides="ac_cv_path_shell=/usr/bin/ksh"
 
 reg prep
