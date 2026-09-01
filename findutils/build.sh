@@ -16,8 +16,18 @@ source[0]=ftp://ftp.sunet.se/pub/gnu/findutils/$topdir-$version.tar.gz
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
-export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
+export CPPFLAGS="-I$prefix/include -Dwint_t=int"
+export LIBS="-lposix4 $prefix/lib/libsnprintf.a"
+ac_overrides="am_cv_func_mbstate_t=no 
+ac_cv_header_wctype_h=no 
+ac_cv_header_wchar_h=no 
+gl_cv_func_btowc=no 
+gl_cv_func_mbrtowc=no 
+l_cv_func_mbsrtowcs=no 
+gl_cv_func_wcrtomb=no 
+gl_cv_func_wctob=
+no gl_cv_func_mbsinit=no"
+
 gnu_link find locate oldfind updatedb xargs
 
 reg prep
