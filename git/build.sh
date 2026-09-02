@@ -41,6 +41,8 @@ make_build_target="V=1"
 reg prep
 prep()
 {
+
+    export GCC_MCPU="-mcpu=${TARGET_CPU:-v7}"
     generic_prep
     setdir source
     cat << EOF > config.mak
@@ -58,7 +60,7 @@ SHELL=$prefix/bin/bash
 PERL_PATH=$prefix/bin/perl
 SHELL_PATH=$prefix/bin/bash
 SANE_TOOL_PATH=/usr/tgcware/gnu:/usr/xpg6/bin:/usr/xpg4/bin
-BASIC_CFLAGS+=-std=gnu99 -mcpu=v7
+BASIC_CFLAGS+=-std=gnu99 $GCC_MCPU
 BASIC_CFLAGS+=-I$prefix/include
 BASIC_LDFLAGS+=-L$prefix/lib -R$prefix/lib
 

@@ -1,0 +1,20 @@
+diff -ruN a/Makefile.in b/Makefile.in
+--- a/Makefile.in	2016-12-21 11:02:53.000000000 +0000
++++ b/Makefile.in	2026-09-01 20:44:13.411760000 +0000
+@@ -5,6 +5,7 @@
+ INSTALL_DATA = $(INSTALL) -m 644
+ INSTALL_DIR = $(INSTALL) -d -m 755
+ SHELL = /bin/sh
++LDLIBS = $(LIBS)
+ CAN_RUN_INSTALLINFO = $(SHELL) -c "install-info --version" > /dev/null 2>&1
+ 
+ objs = arg_parser.o file_index.o list.o encoder_base.o encoder.o \
+@@ -20,7 +21,7 @@
+ all : $(progname)
+ 
+ $(progname) : $(objs)
+-	$(CXX) $(LDFLAGS) $(CXXFLAGS) -o $@ $(objs)
++	$(CXX) $(LDFLAGS) $(CXXFLAGS) -o $@ $(objs) $(LDLIBS)
+ 
+ main.o : main.cc
+ 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -DPROGVERSION=\"$(pkgversion)\" -c -o $@ $<

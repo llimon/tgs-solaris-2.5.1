@@ -11,16 +11,18 @@ pkgver=2
 source[0]=http://download.savannah.gnu.org/releases/lzip/$topdir-$version.tar.gz
 # If there are no patches, simply comment this
 #patch[0]=lzip-1.20-no-stdint_h.patch
-patch[0]=snprintf.patch
+#patch[0]=snprintf.patch
+patch[0]=libs-build-patch
 
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
 #CXXFLAGS="-D_GLIBCXX_USE_C99 -D_GLIBCXX_USE_C99_CHECK -I/usr/tgcware/include/c++/4.1.2"
-CXXFLAGS="-I/usr/tgcware/include/c++/4.1.2"
-LDFLAGS="-L/usr/tgcware/lib -R/usr/tgcware/lib -lsnprintf -lgcc_s"
-configure_args+=(CXXFLAGS="$CXXFLAGS" LDFLAGS="$LDFLAGS")
+export CXXFLAGS="-I$prefix/include/c++/4.1.2 -include $prefix/include/compat/snprintf_compat.h"
+# Stupid Solaris linker and lzip custom build cannot use -lsnprintf because of single pass linking.
+export LIBS="$LIBS -lsnprintf"
+configure_args+=(CXXFLAGS="$CXXFLAGS" LDFLAGS="$LDFLAGS" LIBS="$LIBS")
 
 reg prep
 prep()

@@ -10,14 +10,13 @@ version=7.8
 pkgver=1
 source[0]=ftp://ftp.sunet.se/pub/gnu/gdb/$topdir-$version.tar.xz
 # If there are no patches, simply comment this
-#patch[0]=
+patch[0]=0001-Solaris-2.5.1.patch
 
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
-# Global settings
-export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
+# Global overrides / additions
+export CPPFLAGS="$CPPFLAGS -D__EXTENSIONS__ -D_LONG_LONG -D_INT64_TYPE -D_SYSCALL32 -DPROC_SERVICE_IS_OLD"
 
 reg prep
 prep()

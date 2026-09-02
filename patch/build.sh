@@ -16,8 +16,6 @@ source[0]=ftp://ftp.sunet.se/pub/gnu/patch/$topdir-$version.tar.xz
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
-export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
 ac_overrides="ac_cv_path_ed_PROGRAM=/usr/bin/ed"
 gnu_link patch
 
