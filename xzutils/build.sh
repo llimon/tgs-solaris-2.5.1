@@ -15,7 +15,7 @@ source[0]=https://tukaani.org/xz/$topdir-$version.tar.gz
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
-LIBS="$LIBS -lgcc_s"
+LIBS="$LIBS -lsnprintf -lgcc_s"
 ac_overrides="gl_cv_posix_shell=/usr/bin/ksh"
 
 reg prep
