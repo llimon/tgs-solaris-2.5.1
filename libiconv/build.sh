@@ -14,12 +14,6 @@ patch[0]=libiconv-getprogname.patch
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
-# Global settings
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
-export LIBS="-lgcc_s"
-# Should use bash for libtool
-export CONFIG_SHELL=/usr/tgcware/bin/bash
-configure_args+=(--enable-extra-encodings)
 gnu_link iconv
 
 reg prep
@@ -33,6 +27,11 @@ prep()
 reg build
 build()
 {
+    # Global settings
+    export LDFLAGS="$LDFLAGS -lgcc_s"
+    # Should use bash for libtool
+    export CONFIG_SHELL=/usr/tgcware/bin/bash
+    configure_args+=(--enable-extra-encodings)
     gl_cv_func_getprogname_is_buggy=yes generic_build
 }
 

@@ -13,17 +13,23 @@ source[0]=https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/$topdir-$version.
 patch[0]=0007-Fix-authopt-test-on-platforms-without-IPv6-support.patch
 patch[1]=0001-regress-login-timeout.sh-increase-timeouts.patch
 patch[2]=0001-Revert-simplify-sshkey_prekey_alloc-always-use-mmap.patch
+patch[3]=undef-wcwidth.patch
 
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
-# Global settings
-export LDFLAGS="-R$prefix/lib -L$prefix/lib"
-export CPPFLAGS="-I$prefix/include"
-export CC="gcc -std=gnu99"
 make_check_target="tests"
 
-configure_args=(--prefix=$prefix --mandir=$prefix/$_mandir --sysconfdir=$prefix/${_sysconfdir}/ssh --datadir=$prefix/${_sharedir}/openssh --with-default-path=/usr/bin:$prefix/${_bindir} --with-mantype=man --with-pam --with-privsep-user=sshd --with-privsep-path=/var/empty/sshd --with-superuser-path=/usr/bin:/usr/sbin:$prefix/$_bindir:$prefix/$_sbindir --with-lastlog=/var/adm/lastlog)
+# Global settings
+#export LDFLAGS="-R$prefix/lib -L$prefix/lib -lz -lw -lposix4 -lpthread -lthread -lgcc_s"
+#export CC="gcc -std=gnu99 -fgnu89-inline"
+
+#export CPPFLAGS="$CPPFLAGS -D__EXTENSIONS__"
+export LIBS="$LIBS -lgcc_s"
+export CC="gcc -std=gnu99" 
+make_check_target="tests"
+
+configure_args=(--prefix=$prefix --mandir=$prefix/$_mandir --sysconfdir=$prefix/${_sysconfdir}/ssh --datadir=$prefix/${_sharedir}/openssh --with-default-path=/usr/bin:$prefix/${_bindir} --with-mantype=man --without-pam --with-privsep-user=sshd --with-privsep-path=/var/empty/sshd --with-superuser-path=/usr/bin:/usr/sbin:$prefix/$_bindir:$prefix/$_sbindir --with-lastlog=/var/adm/lastlog)
 
 reg prep
 prep()
@@ -58,12 +64,12 @@ install()
     ${__mkdir} -p ${stagedir}/var/empty/sshd
 
     # Install initscript
-    ${__cp} $srcdir/sshd.init ${stagedir}/${_sysconfdir}/init.d/tgc_sshd
-    chmod 755 ${stagedir}/${_sysconfdir}/init.d/tgc_sshd
-    (setdir ${stagedir}/${_sysconfdir}/rc0.d; ${__ln} -sf ../init.d/tgc_sshd K02tgc_sshd)
-    (setdir ${stagedir}/${_sysconfdir}/rc1.d; ${__ln} -sf ../init.d/tgc_sshd K02tgc_sshd)
-    (setdir ${stagedir}/${_sysconfdir}/rcS.d; ${__ln} -sf ../init.d/tgc_sshd K02tgc_sshd)
-    (setdir ${stagedir}/${_sysconfdir}/rc2.d; ${__ln} -sf ../init.d/tgc_sshd S98tgc_sshd)
+    ${__cp} $srcdir/sshd.init ${stagedir}/${_sysconfdir}/init.d/lse_sshd
+    chmod 755 ${stagedir}/${_sysconfdir}/init.d/lse_sshd
+    (setdir ${stagedir}/${_sysconfdir}/rc0.d; ${__ln} -sf ../init.d/lse_sshd K02lse_sshd)
+    (setdir ${stagedir}/${_sysconfdir}/rc1.d; ${__ln} -sf ../init.d/lse_sshd K02lse_sshd)
+    (setdir ${stagedir}/${_sysconfdir}/rcS.d; ${__ln} -sf ../init.d/lse_sshd K02lse_sshd)
+    (setdir ${stagedir}/${_sysconfdir}/rc2.d; ${__ln} -sf ../init.d/lse_sshd S98lse_sshd)
 
     custom_install=1
     generic_install

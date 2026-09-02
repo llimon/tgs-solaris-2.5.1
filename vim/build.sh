@@ -21,10 +21,11 @@ patch[0]=sol2.5.1.patch
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
-export CPPFLAGS="$CPPFLAGS -I/usr/tgcware/include/ncurses"
-export LIBS="-liconv -lgcc_s -lsnprintf -lw"
-export SHELL=/usr/tgcware/bin/bash
-export CONFIG_SHELL=/usr/tgcware/bin/bash
+export CPPFLAGS="$CPPFLAGS -I$prefix/include/ncurses -include $prefix/include/compat/snprintf_compat.h -include $prefix/include/compat/vterm_compat.h -include $prefix/include/compat/mbstowcs_compat.h -include $prefix/include/compat/wcsstr_compat.h -include $prefix/include/compat/socket_compat.h"
+export CFLAGS="$CFLAGS -Wno-implicit-int"
+export LIBS="$LIBS -liconv -lgcc_s -lsnprintf -lw -lsocket"
+export SHELL=$prefix/bin/bash
+export CONFIG_SHELL=$prefix/bin/bash
 
 ## Features = normal, we are building for very old hardware. Need to preserver memory!
 basic_args=(--prefix=$prefix --without-local-dir --with-features=normal)

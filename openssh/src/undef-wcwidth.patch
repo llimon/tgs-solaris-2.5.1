@@ -1,0 +1,11 @@
+diff -ruN a/utf8.c b/utf8.c
+--- a/utf8.c	2026-09-02 02:25:31.409972000 +0000
++++ b/utf8.c	2026-09-02 02:26:05.502119000 +0000
+@@ -36,6 +36,7 @@
+ # include <vis.h>
+ #endif
+ #ifdef HAVE_WCHAR_H
++# undef wcwidth
+ # include <wchar.h>
+ #endif
+ 

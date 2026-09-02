@@ -16,8 +16,7 @@ source[0]=https://github.com/westes/$topdir/releases/download/v${version}/$topdi
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
-export CPPFLAGS="-I/$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib -lsnprintf -lgcc_s -lgen"
+export LIBS="-lsnprintf -lgen"
 
 reg prep
 prep()

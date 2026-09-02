@@ -16,8 +16,6 @@ patch[0]=binutils-2.25-use-strtod-instead-of-strtold.patch
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
-export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
 configure_args+=(--disable-werror --program-prefix=g)
 
 reg prep
