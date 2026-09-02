@@ -15,9 +15,6 @@ source[0]=ftp://ftp.sunet.se/pub/gnu/grep/$topdir-$version.tar.xz
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
-# Global settings
-export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
 gnu_link grep
 
 reg prep

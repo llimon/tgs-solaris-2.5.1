@@ -10,7 +10,7 @@ version_major="${version%.*}"
 
 pkgver=1
 
-source[0]=https://ftp.deu.edu.tr/pub/Solaris/sunfreeware/SOURCES/${topdir}-${version}.tar.gz
+source[0]=$patchdir/${topdir}-${version}.tar.gz
 # If there are no patches, simply comment this
 
 # Source function library
@@ -18,12 +18,9 @@ source[0]=https://ftp.deu.edu.tr/pub/Solaris/sunfreeware/SOURCES/${topdir}-${ver
 
 # Global settings
 export COMPATIBILITY="-DSNPRINTF_LONGLONG_SUPPORT -DSOLARIS_COMPATIBLE -DSOLARIS_BUG_COMPATIBLE"
-export CFLAGS="-std=gnu99 -I$prefix/include -mcpu=v7 $COMPATIBILITY"
 
-# Fix: Ensure -lgcc_s and runtime search paths are passed to LDFLAGS 
-# so libsnprintf.so gets built with an explicit DT_NEEDED tag for libgcc_s
-export LDFLAGS="-L$prefix/lib -R$prefix/lib -lgcc_s"
-export LIBS="-L$prefix/lib -R$prefix/lib -lgcc_s"
+
+export CFLAGS="$CFLAGS -fPIC $COMPATIBILITY"
 
 #configure_args+=()
 

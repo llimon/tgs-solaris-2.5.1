@@ -15,9 +15,7 @@ source[0]=https://tukaani.org/xz/$topdir-$version.tar.gz
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
-# Global settings
-export CPPFLAGS="-I/usr/tgcware/lib"
-export LDFLAGS="-L/usr/tgcware/lib -R/usr/tgcware/lib"
+LIBS="$LIBS -lgcc_s"
 ac_overrides="gl_cv_posix_shell=/usr/bin/ksh"
 
 reg prep

@@ -59,8 +59,11 @@ pthreads="--enable-threads=posix95"
 # For gcc < 4.0 this is the same as posix
 [ $abbrev_majorminor -lt 40 ] && pthreads="--enable-threads=posix"
 # For Solaris < 2.5 always use 'solaris' threads
-[ ${gnu_os_ver/./} -lt 25 ] && pthreads="--enable-threads=solaris"
-
+case "$gnu_os_ver" in
+    2.[0-4] | 2.[0-4].*)
+        pthreads="--enable-threads=solaris"
+        ;;
+esac
 # For gcc < 3.4 we adjust the c++ include path to match gcc > 3.3
 [ $abbrev_majorminor -lt 34 ] && gxxinclude="--with-gxx-include-dir=$lprefix/include/c++/$version"
 

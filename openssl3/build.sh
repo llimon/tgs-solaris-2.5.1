@@ -28,7 +28,8 @@ make_check_target="test"
 __configure="./Configure"
 
 # Define compatibility headers and enforce -O2
-compat_cflags="-O2 -I$prefix/include \
+export GCC_MCPU="-mcpu=${TARGET_CPU:-v7}"
+compat_cflags="-O2 $GCC_MCPU -I$prefix/include \
 -include $prefix/include/compat/strtoimax_compat.h \
 -include $prefix/include/compat/dns_rfc2553_compat.h \
 -include $prefix/include/compat/socket_compat.h \
@@ -48,7 +49,8 @@ configure_args=(
     # 1. Environment overrides MUST be explicitly named key-values
     CFLAGS="$compat_cflags"
     CPPFLAGS="$compat_cflags"
-    LDFLAGS="-L$prefix/lib -R$prefix/lib -lposix4 -lsnprintf -lgcc_s"
+    LDFLAGS="-L$prefix/lib -R$prefix/lib -lposix4 -lgcc_s"
+    EX_LIBS="$prefix/lib/libsnprintf.a"
 )
 
 # 2. Target architecture MUST be appended AT THE VERY END

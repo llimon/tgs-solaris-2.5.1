@@ -1,3 +1,6 @@
+Legacy SPARC Extensions
+----------------------
+
 # LSEcmph — C99 & POSIX.1-2001 Compatibility Header Suite
 
 **LSEcmph** (*Legacy SPARC Extensions Compatibility Headers*) is a lightweight, zero-dependency header-only shim layer created to bring ISO C99 standard library features and POSIX.1-2001 system interfaces to **SunOS 5.5.1 (Solaris 2.5.1)** running on SPARC architectures.

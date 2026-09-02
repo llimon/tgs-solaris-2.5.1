@@ -14,15 +14,15 @@ version=${basever}.${patchlevel}
 pkgver=2
 source[0]="https://github.com/vim/vim/archive/v${basever}.${repo_pl}.tar.gz#/${topdir}-${version}.tar.gz"
 # If there are no patches, simply comment this
-patch[0]=vim-8.2.4804-socklen_t.patch
-patch[1]=sol2.5.1.patch
+#patch[0]=vim-8.2.4804-socklen_t.patch
+patch[0]=sol2.5.1.patch
 
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
-export CPPFLAGS="-I/usr/tgcware/include -I/usr/tgcware/include/ncurses "
-export LDFLAGS="-L$prefix/lib -R$prefix/lib -liconv -lgcc_s -lsnprintf -lw"
+export CPPFLAGS="$CPPFLAGS -I/usr/tgcware/include/ncurses"
+export LIBS="-liconv -lgcc_s -lsnprintf -lw"
 export SHELL=/usr/tgcware/bin/bash
 export CONFIG_SHELL=/usr/tgcware/bin/bash
 
@@ -33,7 +33,7 @@ basic_args+=(--disable-tclinterp --disable-netbeans)
 basic_args+=(--with-compiledby="Luis E Limon")
 basic_args+=(--with-modified-by="Luis E Limon")
 # Do not let scripts add a dependency on perl
-ignore_deps="TGCperl"
+ignore_deps="LSEperl"
 # We need to override this
 topsrcdir=vim-${basever}.${repo_pl}
 

@@ -16,8 +16,10 @@ source[0]=ftp://ftp.sunet.se/pub/gnu/readline/$topdir-$version.tar.gz
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
-export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib -lgcc_s -lsnprintf -lw"
+#export CPPFLAGS="-I$prefix/include"
+#export LDFLAGS="-L$prefix/lib -R$prefix/lib -lgcc_s -lsnprintf -lw"
+export LDFLAGS="$LDFLAGS -lgcc_s -lw"
+export LIBS="$LIBS -lw"
 #configure_args+=(--disable-static)
 
 reg prep

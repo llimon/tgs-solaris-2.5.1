@@ -16,8 +16,8 @@ source[0]=https://downloads.sourceforge.net/$topdir/$topdir-$version.tar.bz2
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
-export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib -lgcc_s"
+#export LIBS="$prefix/lib/libsnprintf.a"
+export LIBS="$LIBS -lsnprintf -lgcc_s"
 configure_args+=(--enable-utf)
 
 reg prep

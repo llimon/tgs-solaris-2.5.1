@@ -16,6 +16,37 @@
 #define AF_INET 2
 #endif
 
+/* =========================================================================
+ * RFC 2553 getnameinfo() Flags & String Buffer Limits (32-bit SPARC)
+ * ========================================================================= */
+#ifndef NI_MAXHOST
+#define NI_MAXHOST      1025
+#endif
+
+#ifndef NI_MAXSERV
+#define NI_MAXSERV      32
+#endif
+
+#ifndef NI_NUMERICHOST
+#define NI_NUMERICHOST  0x0001
+#endif
+
+#ifndef NI_NUMERICSERV
+#define NI_NUMERICSERV  0x0002
+#endif
+
+#ifndef NI_NOFQDN
+#define NI_NOFQDN       0x0004
+#endif
+
+#ifndef NI_NAMEREQD
+#define NI_NAMEREQD     0x0008
+#endif
+
+#ifndef NI_DGRAM
+#define NI_DGRAM        0x0010
+#endif
+
 /* Standard RFC 2553 / RFC 3493 Error Codes */
 #ifndef EAI_ADDRFAMILY
 #define EAI_ADDRFAMILY  1 /* Address family for hostname not supported */
