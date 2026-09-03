@@ -16,8 +16,7 @@ patch[0]=getprogname.patch
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
-export CPPFLAGS="-I/$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib -lsnprintf -lgcc_s"
+export LIBS="-lsnprintf"
 
 reg prep
 prep()

@@ -40,8 +40,6 @@ patch[22]=bash44-022
 patch[23]=bash44-023
 
 # Global settings
-export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
 patch_prefix="-p0"
 topsrcdir=${topdir}-${real_version}
 

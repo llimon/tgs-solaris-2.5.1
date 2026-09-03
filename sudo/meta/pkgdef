@@ -32,8 +32,8 @@ $lprefix/$_sbindir/visudo
 files(755,root,root)
 dir $lprefix/libexec/sudo
 files(644,root,root)
-$lprefix/libexec/sudo/*.so
-$lprefix/libexec/sudo/libsudo_util.so.*
+#$lprefix/libexec/sudo/*.so
+#$lprefix/libexec/sudo/libsudo_util.so.*
 $lprefix/libexec/sudo/*.la
 files(-,root,bin)
 default_docs

@@ -15,9 +15,7 @@ patch[0]=getprogname.patch
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
-# Global settings
-export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
+# Override or extend CPPFLAGS, LDFLAGS, LIBS, CFLAGS here
 gnu_link sed
 
 reg prep

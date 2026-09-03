@@ -25,7 +25,7 @@ make_check_target="tests"
 #export CC="gcc -std=gnu99 -fgnu89-inline"
 
 #export CPPFLAGS="$CPPFLAGS -D__EXTENSIONS__"
-export LIBS="$LIBS -lgcc_s"
+export LIBS="$LIBS -lz -lw -lgcc_s "
 export CC="gcc -std=gnu99" 
 make_check_target="tests"
 

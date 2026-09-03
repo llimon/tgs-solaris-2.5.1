@@ -18,7 +18,7 @@ pkgvendor="http://gmplib.org"
 pkgdesc="Files needed for developing with gmp"
 pkgver="$pkgver"
 files(-,root,bin)
-$_libdir/*.so
+#$_libdir/*.so
 $_libdir/*.a
 $_includedir
 

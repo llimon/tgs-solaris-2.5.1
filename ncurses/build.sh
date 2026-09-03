@@ -16,8 +16,6 @@ source[0]=$topdir-$version.tar.gz
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
-export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
 configure_args+=(--with-shared --without-debug --with-install-prefix=${stagedir} --disable-rpath --enable-symlinks --with-manpage-format=normal --without-ada)
 
 reg prep

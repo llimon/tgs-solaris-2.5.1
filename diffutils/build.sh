@@ -16,8 +16,6 @@ patch[0]=getprogname.patch
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
-export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
 gnu_link cmp diff diff3 sdiff
 
 reg prep

@@ -12,16 +12,21 @@ source[0]=https://www.sudo.ws/sudo/dist/$topdir-$version.tar.gz
 # If there are no patches, simply comment this
 # patch lib/util/getentropy.c
 patch[0]=getentropy.c.patch
-patch[1]=RTLD_LOCAL.patch
+#patch[1]=RTLD_LOCAL.patch
 
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 
 # Global settings
-export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
-configure_args+=(--disable-poll --disable-hardening --sysconfdir=/usr/tgcware/etc --with-man --with-all-insults)
+export CPPFLAGS="$CPPFLAGS -include $prefix/include/compat/dlfcn_compat.h -include $prefix/include/compat/snprintf_compat.h"
+export LDFLAGS="$LDFLAGS -lposix4 -lsnprintf"
+ac_overrides="gl_cv_func_snprintf_directive_n=yes
+gl_cv_func_vsnprintf_directive_n=yes
+gl_cv_func_printf_directive_n=yes
+"
+# disabling generation of .so binaries; We don't need that stuff for sudo and makes it a little leaner for resource contrained workstations.
+configure_args+=(--enable-static --with-static-sudoers --disable-poll --disable-hardening --sysconfdir=/usr/tgcware/etc --with-man --with-all-insults)
 
 export no_configure=1
 

@@ -16,9 +16,20 @@ source[0]=http://www.mpfr.org/mpfr-current/$topdir-$real_version.tar.xz
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
-# Global settings
-export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
+# Overrides of CFLAGS, CPPFLAGS, LDFLAGS, LIBS
+export CPPFLAGS="$CPPFLAGS -include $prefix/include/compat/snprintf_compat.h"
+export LIBS="$LIBS -lsnprintf -lgcc_s -lgmp"
+ac_overrides="ac_cv_func_vsnprintf=yes
+  ac_cv_func_vsnprintf=yes
+  ac_cv_func_snprintf=yes
+  gl_cv_func_vsnprintf_posix=yes
+  gl_cv_func_snprintf_posix=yes
+  gl_cv_func_vsnprintf_posix=yes
+  gl_cv_func_snprintf_posix=yes
+  gl_cv_func_vsnprintf_zerosize_bug=no
+"
+configure_args=(--disable-shared --prefix "$prefix")
+
 topsrcdir=mpfr-${real_version}
 
 reg prep
@@ -45,12 +56,12 @@ install()
     generic_install DESTDIR
     ${__mv} ${stagedir}${prefix}/share/doc/mpfr ${stagedir}${prefix}/${_docdir}/mpfr-$version
     # Grab libraries from mpfr 2.4.2 for compatibility
-    setdir $prefix/${_libdir}
-    ${__tar} -cf - libmpfr.so.1 libmpfr.so.1.2.2 | (cd ${stagedir}${prefix}/${_libdir}; ${__tar} -xf -)
-    compat mpfr 2.3.1 1 1
-    compat mpfr 2.4.2 1 1
-    compat mpfr 3.1.2 1 1
-    compat mpfr 3.1.2p11 1 1
+    #setdir $prefix/${_libdir}
+    #${__tar} -cf - libmpfr.so.1 libmpfr.so.1.2.2 | (cd ${stagedir}${prefix}/${_libdir}; ${__tar} -xf -)
+    #compat mpfr 2.3.1 1 1
+    #compat mpfr 2.4.2 1 1
+    #compat mpfr 3.1.2 1 1
+    #compat mpfr 3.1.2p11 1 1
 }
 
 reg pack

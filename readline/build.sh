@@ -15,10 +15,7 @@ source[0]=ftp://ftp.sunet.se/pub/gnu/readline/$topdir-$version.tar.gz
 # Source function library
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
-# Global settings
-#export CPPFLAGS="-I$prefix/include"
-#export LDFLAGS="-L$prefix/lib -R$prefix/lib -lgcc_s -lsnprintf -lw"
-export LDFLAGS="$LDFLAGS -lgcc_s -lw"
+export LDFLAGS="$LDFLAGS -lgcc_s -lw -lsnprintf"
 export LIBS="$LIBS -lw"
 #configure_args+=(--disable-static)
 

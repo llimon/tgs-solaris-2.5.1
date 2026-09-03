@@ -25,8 +25,10 @@ patch[4]=curl-8.8.0-no-stdint_h.patch
 . ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 # Global settings
-export CPPFLAGS="-I$prefix/include"
-export LDFLAGS="-L$prefix/lib -R$prefix/lib"
+
+
+export CPPFLAGS="$CPPFLAGS -include $prefix/include/compat/dns_rfc2553_compat.h  -include $prefix/include/compat/ftello_compat.h -include $prefix/include/compat/snprintf_compat.h"
+export LDFLAGS="$LDFLAGS -lsnprintf -lsocket -lnsl"
 export PKG_CONFIG=pkgconf
 
 # Prefer the X/Open feature set to get utimes() defined

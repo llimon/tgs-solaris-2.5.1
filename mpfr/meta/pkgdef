@@ -7,7 +7,7 @@ pkgdesc="C library for multiple-precision floating-point computations with exact
 pkgver="$pkgver"
 files(-,root,bin)
 default_docs
-$_libdir/*.so.*
+#$_libdir/*.so.*
 $_infodir
 
 [mpfr-devel]
@@ -18,7 +18,7 @@ pkgvendor="http://www.mpfr.org"
 pkgdesc="Files needed for developing with mpfr"
 pkgver="$pkgver"
 files(-,root,bin)
-$_libdir/*.so
+#$_libdir/*.so
 $_libdir/*.a
 $_includedir
 

@@ -17,7 +17,7 @@ dir usr
 dir usr/tgcware
 dir var
 dir var/empty
-${_sysconfdir}/*/*tgc_sshd
+${_sysconfdir}/*/*lse_sshd
 #
 files(711,root,sys)
 dir var/empty/sshd
